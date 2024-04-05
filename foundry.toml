@@ -3,4 +3,16 @@ src = "src"
 out = "out"
 libs = ["lib"]
 
+auto_detect_remappings = false
+
+remappings = [
+    'forge-std/=lib/forge-std/src/',
+    '@openzeppelin/=lib/openzeppelin-contracts/',
+    "@tokenized-strategy/=lib/tokenized-strategy/src/",
+    "@yearn-vaults/=lib/yearn-vaults-v3/contracts/",
+    "ds-test/=lib/forge-std/lib/ds-test/src/",
+    "@periphery/=lib/tokenized-strategy-periphery/src/",
+    "@vault-periphery/=lib/vault-periphery/src"
+]
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

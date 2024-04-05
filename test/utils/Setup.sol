@@ -12,8 +12,8 @@ import {IVault} from "@yearn-vaults/interfaces/IVault.sol";
 import {IStrategy} from "@tokenized-strategy/interfaces/IStrategy.sol";
 import {IVaultFactory} from "@yearn-vaults/interfaces/IVaultFactory.sol";
 
-import {MockStrategy} from "../mocks/MockStrategy.sol";
-import {Clonable} from "../../utils/Clonable.sol";
+import {MockStrategy} from "@periphery/test/mocks/MockStrategy.sol";
+import {Clonable} from "@periphery/utils/Clonable.sol";
 
 contract Setup is ExtendedTest, Clonable {
     using SafeERC20 for ERC20;
@@ -70,34 +70,6 @@ contract Setup is ExtendedTest, Clonable {
         vm.label(vaultManagement, "vault management");
         vm.label(address(vaultFactory), " vault factory");
         vm.label(performanceFeeRecipient, "performanceFeeRecipient");
-    }
-
-    function setUpVault() public returns (IVault) {
-        if (original == address(0)) {
-            original = vyperDeployer.deployContract(
-                "lib/yearn-vaults-v3/contracts/",
-                "VaultV3"
-            );
-        }
-
-        IVault _vault = IVault(_clone());
-
-        _vault.initialize(
-            address(asset),
-            "Test vault",
-            "tsVault",
-            management,
-            10 days
-        );
-
-        vm.prank(management);
-        // Give the vault manager all the roles
-        _vault.set_role(vaultManagement, Roles.ALL);
-
-        vm.prank(vaultManagement);
-        _vault.set_deposit_limit(type(uint256).max);
-
-        return _vault;
     }
 
     function setUpStrategy() public returns (IStrategy) {

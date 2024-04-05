@@ -16,3 +16,4 @@ docs/
 .vscode/
 node_modules/
 .gas-snapshot
+yarn.lock

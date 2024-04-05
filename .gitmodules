@@ -4,12 +4,15 @@
 [submodule "lib/tokenized-strategy"]
 	path = lib/tokenized-strategy
 	url = https://github.com/yearn/tokenized-strategy
+	ref = v3.0.2
 [submodule "lib/yearn-vaults-v3"]
 	path = lib/yearn-vaults-v3
 	url = https://github.com/yearn/yearn-vaults-v3
+	ref = v3.0.2
 [submodule "lib/openzeppelin-contracts"]
 	path = lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+	ref = v4.9.5
 [submodule "lib/tokenized-strategy-periphery"]
 	path = lib/tokenized-strategy-periphery
 	url = https://github.com/yearn/tokenized-strategy-periphery
