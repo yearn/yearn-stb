@@ -16,3 +16,6 @@
 [submodule "lib/vault-periphery"]
 	path = lib/vault-periphery
 	url = https://github.com/yearn/vault-periphery
+[submodule "lib/zkevm-stb"]
+	path = lib/zkevm-stb
+	url = https://github.com/pyk/zkevm-stb
