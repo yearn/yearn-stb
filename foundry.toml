@@ -1,5 +1,7 @@
 [profile.default]
 src = "src"
+#solc = "0.8.23"
+auto_detect_solc = true
 out = "out"
 libs = ["lib"]
 
