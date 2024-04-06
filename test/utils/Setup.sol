@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.20;
+pragma solidity >=0.8.18;
 
 import "forge-std/console.sol";
 import {ExtendedTest} from "./ExtendedTest.sol";
 
-//import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 //import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol/";
 
-import {Roles} from "@yearn-vaults/interfaces/Roles.sol";
-import {IVault} from "@yearn-vaults/interfaces/IVault.sol";
-import {IStrategy} from "@tokenized-strategy/interfaces/IStrategy.sol";
-import {IVaultFactory} from "@yearn-vaults/interfaces/IVaultFactory.sol";
+import {Roles} from "../../src/interfaces/Roles.sol";
+import {IVault} from "../../src/interfaces/IVault.sol";
+import {IStrategy} from "../../src/interfaces/IStrategy.sol";
+import {IVaultFactory} from "../../src/interfaces/IVaultFactory.sol";
 
-import {MockStrategy} from "@periphery/test/mocks/MockStrategy.sol";
-import {Clonable} from "@periphery/utils/Clonable.sol";
+import {Registry, RegistryFactory} from "@vault-periphery/registry/RegistryFactory.sol";
 
-contract Setup is ExtendedTest, Clonable {
-    using SafeERC20 for ERC20;
+import {MockStrategy} from "../mocks/MockStrategy.sol";
+
+contract Setup is ExtendedTest {
 
     // Contract instances that we will use repeatedly.
     ERC20 public asset;
@@ -24,7 +24,8 @@ contract Setup is ExtendedTest, Clonable {
 
     // Vault contracts to test with.
     IVault public vault;
-    IVaultFactory public vaultFactory;
+    // Vault Factory v3.0.2
+    IVaultFactory public vaultFactory = IVaultFactory(0x444045c5C13C246e117eD36437303cac8E250aB0);
 
     // Addresses for different roles we will use repeatedly.
     address public user = address(10);
@@ -52,14 +53,14 @@ contract Setup is ExtendedTest, Clonable {
         _setTokenAddrs();
 
         // Make sure everything works with USDT
-        asset = ERC20(tokenAddrs["USDT"]);
+        asset = ERC20(tokenAddrs["DAI"]);
 
         // Set decimals
         decimals = asset.decimals();
 
-        mockStrategy = setUpStrategy();
+        vault = setupVault();
 
-        vaultFactory = IVaultFactory(mockStrategy.FACTORY());
+        mockStrategy = setUpStrategy();
 
         // label all the used addresses for traces
         vm.label(daddy, "daddy");
@@ -70,6 +71,10 @@ contract Setup is ExtendedTest, Clonable {
         vm.label(vaultManagement, "vault management");
         vm.label(address(vaultFactory), " vault factory");
         vm.label(performanceFeeRecipient, "performanceFeeRecipient");
+    }
+
+    function setupVault() public returns (IVault) {
+
     }
 
     function setUpStrategy() public returns (IStrategy) {
@@ -97,7 +102,7 @@ contract Setup is ExtendedTest, Clonable {
         uint256 _amount
     ) public {
         vm.startPrank(_user);
-        asset.safeApprove(address(_strategy), _amount);
+        asset.approve(address(_strategy), _amount);
 
         _strategy.deposit(_amount, _user);
         vm.stopPrank();
