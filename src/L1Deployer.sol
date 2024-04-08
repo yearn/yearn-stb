@@ -3,6 +3,4 @@ pragma solidity ^0.8.20;
 
 import {L1YearnEscrow} from "./L1YearnEscrow.sol";
 
-contract L1Deployer {
-
-}
+contract L1Deployer {}

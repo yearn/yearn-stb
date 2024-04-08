@@ -7,10 +7,10 @@ import {ExtendedTest} from "./ExtendedTest.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 //import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol/";
 
-import {Roles} from "../../src/interfaces/Roles.sol";
-import {IVault} from "../../src/interfaces/IVault.sol";
+import {Roles} from "@yearn-vaults/interfaces/Roles.sol";
+import {IVault} from "@yearn-vaults/interfaces/IVault.sol";
 import {IStrategy} from "../../src/interfaces/IStrategy.sol";
-import {IVaultFactory} from "../../src/interfaces/IVaultFactory.sol";
+import {IVaultFactory} from "@yearn-vaults/interfaces/IVaultFactory.sol";
 
 import {Registry, RegistryFactory} from "@vault-periphery/registry/RegistryFactory.sol";
 
@@ -154,7 +154,7 @@ contract Setup is ExtendedTest {
         uint256 _totalAssets,
         uint256 _totalDebt,
         uint256 _totalIdle
-    ) public {
+    ) public view {
         uint256 _assets = _strategy.totalAssets();
         uint256 _balance = ERC20(_strategy.asset()).balanceOf(
             address(_strategy)
