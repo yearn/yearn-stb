@@ -9,7 +9,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import {Roles} from "@yearn-vaults/interfaces/Roles.sol";
 import {IVault} from "@yearn-vaults/interfaces/IVault.sol";
-import {IStrategy} from "../../src/interfaces/IStrategy.sol";
+import {IStrategy} from "@tokenized-strategy/interfaces/IStrategy.sol";
 import {IVaultFactory} from "@yearn-vaults/interfaces/IVaultFactory.sol";
 
 import {Registry, RegistryFactory} from "@vault-periphery/registry/RegistryFactory.sol";
@@ -73,9 +73,7 @@ contract Setup is ExtendedTest {
         vm.label(performanceFeeRecipient, "performanceFeeRecipient");
     }
 
-    function setupVault() public returns (IVault) {
-
-    }
+    function setupVault() public returns (IVault) {}
 
     function setUpStrategy() public returns (IStrategy) {
         // we save the strategy as a IStrategyInterface to give it the needed interface
