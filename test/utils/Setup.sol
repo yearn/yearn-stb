@@ -5,36 +5,81 @@ import "forge-std/console.sol";
 import {ExtendedTest} from "./ExtendedTest.sol";
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-//import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol/";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {Roles} from "@yearn-vaults/interfaces/Roles.sol";
 import {IVault} from "@yearn-vaults/interfaces/IVault.sol";
-import {IStrategy} from "@tokenized-strategy/interfaces/IStrategy.sol";
+import {IStrategy} from "../../src/interfaces/Yearn/IStrategy.sol";
 import {IVaultFactory} from "@yearn-vaults/interfaces/IVaultFactory.sol";
 
 import {Registry, RegistryFactory} from "@vault-periphery/registry/RegistryFactory.sol";
+import {DebtAllocator, DebtAllocatorFactory} from "@vault-periphery/debtAllocators/DebtAllocatorFactory.sol";
+
+import {IAccountant} from "../../src/interfaces/Yearn/IAccountant.sol";
+import {IAccountantFactory} from "../../src/interfaces/Yearn/IAccountantFactory.sol";
+
+import {L1Deployer} from "../../src/L1Deployer.sol";
+import {L2Deployer} from "../../src/L2Deployer.sol";
+import {L1YearnEscrow} from "../../src/L1YearnEscrow.sol";
+
+import {L2Escrow} from "@zkevm-stb/L2Escrow.sol";
+import {L2Token} from "@zkevm-stb/L2Token.sol";
+import {L2TokenConverter} from "@zkevm-stb/L2TokenConverter.sol";
 
 import {MockStrategy} from "../mocks/MockStrategy.sol";
 
 contract Setup is ExtendedTest {
+    using SafeERC20 for ERC20;
 
     // Contract instances that we will use repeatedly.
     ERC20 public asset;
     IStrategy public mockStrategy;
+
+    address public zkEvmBridge = 0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe;
+
+    address public rollupManager = 0x5132A183E9F3CB7C848b0AAC5Ae0c4f0491B7aB2;
 
     // Vault contracts to test with.
     IVault public vault;
     // Vault Factory v3.0.2
     IVaultFactory public vaultFactory = IVaultFactory(0x444045c5C13C246e117eD36437303cac8E250aB0);
 
-    // Addresses for different roles we will use repeatedly.
-    address public user = address(10);
-    address public keeper = address(4);
-    address public daddy = address(69);
-    address public management = address(1);
-    address public vaultManagement = address(2);
-    address public performanceFeeRecipient = address(3);
+    /// Periphery Contracts \\\
 
+    Registry public registry;
+    RegistryFactory public registryFactory = RegistryFactory(0x8648FF16ed48FAD456BF0e0e2190AeA8710BdC81);
+
+    DebtAllocatorFactory public allocatorFactory;
+
+    IAccountant public accountant;
+    IAccountantFactory public accountantFactory = IAccountantFactory(0xF728f839796a399ACc2823c1e5591F05a31c32d1);
+
+    /// Core Contracts \\\\
+
+    ///// L1 Contracts \\\\\
+    L1Deployer public l1Deployer;
+
+    L1YearnEscrow public l1EscrowImpl;
+
+    //// L2 Contracts \\\\\
+
+    L2Deployer public l2Deployer;
+
+    L2Escrow public l2EscrowImpl;
+
+    L2Token public l2TokenImpl;
+
+    L2TokenConverter public l2TokenConverterImpl;
+
+    // Addresses for different roles we will use repeatedly.
+    address public czar = address(1);
+    address public user = address(2);
+    address public keeper = address(3);
+    address public management = address(4);
+    address public governator = address(69);
+    address public feeRecipient = address(5);
+    address public emergencyAdmin = address(6);
+    
     mapping(string => address) public tokenAddrs;
 
     // Integer variables that will be used repeatedly.
@@ -52,25 +97,74 @@ contract Setup is ExtendedTest {
     function setUp() public virtual {
         _setTokenAddrs();
 
+        // Deploy new Registry.
+        registry = Registry(
+            registryFactory.createNewRegistry("Test STB Registry", governator)
+        );
+
+        // Deploy new Debt Allocator Factory.
+        allocatorFactory = DebtAllocatorFactory(new DebtAllocatorFactory(governator));
+
+        // Deploy new Accountant
+        accountant = IAccountant(accountantFactory.newAccountant(
+            governator, // governance
+            feeRecipient, // Fee recipient
+            0, // Management Fee
+            1_000,  // Perf Fee
+            0, // Refund Ratio
+            10_000, // Max Fee
+            20_000, // Max Gain
+            0 // Max Loss
+        ));
+
+        l1EscrowImpl = new L1YearnEscrow();
+
+        l1Deployer = new L1Deployer(
+            governator,
+            czar,
+            management,
+            emergencyAdmin,
+            keeper,
+            address(registry),
+            rollupManager,
+            address(l1EscrowImpl)
+        );
+
+        vm.prank(governator);
+        registry.setEndorser(address(l1Deployer), true);
+
+        l2TokenImpl = new L2Token();
+
+        l2EscrowImpl = new L2Escrow();
+
+        l2TokenConverterImpl = new L2TokenConverter();
+
+        l2Deployer = new L2Deployer();
+
         // Make sure everything works with USDT
         asset = ERC20(tokenAddrs["DAI"]);
 
         // Set decimals
         decimals = asset.decimals();
 
-        vault = setupVault();
-
-        mockStrategy = setUpStrategy();
-
         // label all the used addresses for traces
-        vm.label(daddy, "daddy");
+        vm.label(governator, "governator");
+        vm.label(czar, "czar");
         vm.label(keeper, "keeper");
         vm.label(address(asset), "asset");
         vm.label(management, "management");
         vm.label(address(mockStrategy), "strategy");
-        vm.label(vaultManagement, "vault management");
         vm.label(address(vaultFactory), " vault factory");
-        vm.label(performanceFeeRecipient, "performanceFeeRecipient");
+        vm.label(feeRecipient, "feeRecipient");
+        vm.label(address(registry), "Registry");
+        vm.label(address(accountant), "Accountant");
+        vm.label(address(allocatorFactory), "Allocator Factory");
+        vm.label(address(l1Deployer), "L1 Deployer");
+        vm.label(address(l1EscrowImpl), "L1 escrow IMPL");
+        vm.label(address(l2Deployer), "L2 Deployer");
+        vm.label(address(l2EscrowImpl), "L2 Escrow IMPL");
+        vm.label(address(l2TokenImpl), "L2 Token Impl");
+        vm.label(address(l2TokenConverterImpl), "L2 Convertor IMPL");
     }
 
     function setupVault() public returns (IVault) {}
@@ -84,7 +178,7 @@ contract Setup is ExtendedTest {
         // set keeper
         _strategy.setKeeper(keeper);
         // set treasury
-        _strategy.setPerformanceFeeRecipient(performanceFeeRecipient);
+        _strategy.setPerformanceFeeRecipient(feeRecipient);
         // set management of the strategy
         _strategy.setPendingManagement(management);
         // Accept management.
@@ -116,10 +210,10 @@ contract Setup is ExtendedTest {
     }
 
     function addStrategyToVault(IVault _vault, IStrategy _strategy) public {
-        vm.prank(vaultManagement);
+        vm.prank(governator);
         _vault.add_strategy(address(_strategy));
 
-        vm.prank(vaultManagement);
+        vm.prank(governator);
         _vault.update_max_debt_for_strategy(
             address(_strategy),
             type(uint256).max
@@ -131,7 +225,7 @@ contract Setup is ExtendedTest {
         IStrategy _strategy,
         uint256 _amount
     ) public {
-        vm.prank(vaultManagement);
+        vm.prank(governator);
         _vault.update_debt(address(_strategy), _amount);
     }
 
