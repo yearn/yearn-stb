@@ -2,17 +2,21 @@
 src = "src"
 out = "out"
 libs = ["lib"]
-
+solc = "0.8.23"
+evm_version = "shanghai"
 auto_detect_remappings = false
 
 remappings = [
     'forge-std/=lib/forge-std/src/',
-    '@openzeppelin/=lib/openzeppelin-contracts/',
-    "@tokenized-strategy/=lib/tokenized-strategy/src/",
+    '@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/',
+    "@tokenized-strategy/=src/",
     "@yearn-vaults/=lib/yearn-vaults-v3/contracts/",
     "ds-test/=lib/forge-std/lib/ds-test/src/",
     "@periphery/=lib/tokenized-strategy-periphery/src/",
-    "@vault-periphery/=lib/vault-periphery/src"
+    "@vault-periphery/=lib/vault-periphery/contracts/",
+    "@zkevm-stb/=lib/zkevm-stb/src/",
+    "@src/=src/",
+    "@openzeppelin/contracts-upgradeable/=lib/zkevm-stb/lib/openzeppelin-contracts-upgradeable/contracts/",
 ]
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
