@@ -5,7 +5,7 @@ interface ICREATE3Factory {
     function getDeployed(
         address deployer,
         bytes32 salt
-    ) external returns (address);
+    ) external view returns (address);
     function deploy(
         bytes32 salt,
         bytes memory creationCode

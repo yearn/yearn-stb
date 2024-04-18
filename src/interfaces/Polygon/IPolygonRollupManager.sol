@@ -3,37 +3,6 @@ pragma solidity >=0.8.18;
 
 interface IPolygonRollupManager {
     /**
-     * @notice Struct which will be stored for every batch sequence
-     * @param accInputHash Hash chain that contains all the information to process a batch:
-     * Before etrog: keccak256(bytes32 oldAccInputHash, keccak256(bytes transactions), bytes32 globalExitRoot, uint64 timestamp, address seqAddress)
-     * Etrog: keccak256(bytes32 oldAccInputHash, keccak256(bytes transactions), bytes32 l1InfoRoot/forcedGlobalExitRoot, uint64 currentTimestamp/forcedTimestamp, address l2Coinbase, bytes32 0/forcedBlockHashL1)
-     * @param sequencedTimestamp Sequenced timestamp
-     * @param previousLastBatchSequenced Previous last batch sequenced before the current one, this is used to properly calculate the fees
-     */
-    struct SequencedBatchData {
-        bytes32 accInputHash;
-        uint64 sequencedTimestamp;
-        uint64 previousLastBatchSequenced;
-    }
-
-    /**
-     * @notice Struct to store the pending states
-     * Pending state will be an intermediary state, that after a timeout can be consolidated, which means that will be added
-     * to the state root mapping, and the global exit root will be updated
-     * This is a protection mechanism against soundness attacks, that will be turned off in the future
-     * @param timestamp Timestamp where the pending state is added to the queue
-     * @param lastVerifiedBatch Last batch verified batch of this pending state
-     * @param exitRoot Pending exit root
-     * @param stateRoot Pending state root
-     */
-    struct PendingState {
-        uint64 timestamp;
-        uint64 lastVerifiedBatch;
-        bytes32 exitRoot;
-        bytes32 stateRoot;
-    }
-
-    /**
      * @notice Struct which to store the rollup data of each chain
      * @param rollupContract Rollup consensus contract, which manages everything
      * related to sequencing transactions

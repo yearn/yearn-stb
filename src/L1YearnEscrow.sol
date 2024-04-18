@@ -64,7 +64,6 @@ contract L1YearnEscrow is L1Escrow {
      * @param _originTokenAddress Token address
      * @param _wrappedTokenAddress L2Token address on Polygon ZkEVM
      * @param _vaultAddress Address of the vault to use.
-     * @param _minimumBuffer Buffer if any to keep idle.
      */
     function initialize(
         address _admin,
@@ -74,8 +73,7 @@ contract L1YearnEscrow is L1Escrow {
         uint32 _counterpartNetwork,
         address _originTokenAddress,
         address _wrappedTokenAddress,
-        address _vaultAddress,
-        uint256 _minimumBuffer
+        address _vaultAddress
     ) public virtual initializer {
         // Initialize the default escrow.
         initialize(
@@ -91,7 +89,6 @@ contract L1YearnEscrow is L1Escrow {
         VaultStorage storage $ = _getVaultStorage();
         // Set the vault variables
         $.vaultAddress = IVault(_vaultAddress);
-        $.minimumBuffer = _minimumBuffer;
     }
 
     // ****************************
@@ -177,6 +174,11 @@ contract L1YearnEscrow is L1Escrow {
     // *          Admin         *
     // ****************************
 
+    /**
+     * @dev Update the vault to deploy funds into.
+     *      Will fully withdraw from the old vault.
+     * @param _vaultAddress Address of the new vault to use.
+     */
     function updateVault(
         address _vaultAddress
     ) external virtual onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -195,6 +197,10 @@ contract L1YearnEscrow is L1Escrow {
         emit UpdateVaultAddress(_vaultAddress);
     }
 
+    /**
+     * @dev Update the minimum buffer to keep in the escrow.
+     * @param _minimumBuffer The new minimum buffer to enforce.
+     */
     function updateMinimumBuffer(
         uint256 _minimumBuffer
     ) external virtual onlyRole(DEFAULT_ADMIN_ROLE) {

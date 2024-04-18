@@ -139,7 +139,7 @@ contract Setup is ExtendedTest {
 
         l2TokenConverterImpl = new L2TokenConverter();
 
-        l2Deployer = new L2Deployer();
+        //l2Deployer = new L2Deployer();
 
         // Make sure everything works with USDT
         asset = ERC20(tokenAddrs["DAI"]);

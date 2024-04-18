@@ -9,6 +9,7 @@ contract SetupTest is Setup {
         super.setUp();
     }
 
+
     function test_setupOk() public {
         assertNeq(address(registry), address(0));
         assertNeq(address(accountant), address(0));
@@ -19,6 +20,10 @@ contract SetupTest is Setup {
         assertNeq(address(l2EscrowImpl), address(0));
         assertNeq(address(l2TokenImpl), address(0));
         assertNeq(address(l2TokenConverterImpl), address(0));
+        bytes memory symbol = bytes(asset.symbol());
+        string memory made = string.concat(string(symbol), ".e");
+        console.log("Symbol ", made);   
+        assert(false);
     }
 
     function test_newVault() public {
@@ -35,7 +40,5 @@ contract SetupTest is Setup {
         l1Deployer.registerRollup(rollupID, manager);
 
         l1Deployer.newAsset(rollupID, address(asset));
-
-        assert(false);
     }
 }
