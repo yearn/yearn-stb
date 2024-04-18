@@ -137,7 +137,7 @@ contract L1YearnEscrow is L1Escrow {
             address(this)
         );
         if (underlyingBalance != 0) {
-            if (underlyingBalance > amount) {
+            if (underlyingBalance >= amount) {
                 super._transferTokens(destinationAddress, amount);
                 return;
             } else {

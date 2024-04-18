@@ -13,6 +13,13 @@ import {ICREATE3Factory} from "./interfaces/ICREATE3Factory.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract L2Deployer {
+    event NewToken(
+        address indexed l1Token,
+        address indexed l2Token,
+        address indexed l2Escrow,
+        address l2Convertor
+    );
+
     struct TokenInfo {
         address l1Token;
         address l2Token;
@@ -26,9 +33,9 @@ contract L2Deployer {
     ICREATE3Factory internal constant create3Factory =
         ICREATE3Factory(0x93FEC2C00BfE902F733B57c5a6CeeD7CD1384AE1);
 
-    address public immutable counterpartContract;
-
     address public immutable polygonZkEVMBridge;
+
+    address public immutable counterpartContract;
 
     address public l2Admin;
 
@@ -100,11 +107,11 @@ contract L2Deployer {
     function _onMessageReceived(bytes memory data) internal {
         // Decode message data
         (
-            address _originAddress,
+            address _l1Token,
             address _l1Escrow,
             string memory _name,
-            string memory _symbol
-        ) = abi.decode(data, (address, address, string, string));
+            bytes memory _symbol
+        ) = abi.decode(data, (address, address, string, bytes));
 
         // Get addresses
         address expectedTokenAddress = _getL2TokenAddress(_symbol);
@@ -113,6 +120,7 @@ contract L2Deployer {
 
         // Deploy Token
         address _l2Token = _deployL2Token(
+            _name,
             _symbol,
             expectedEscrowAddress,
             expectedConvertorAddress
@@ -120,7 +128,7 @@ contract L2Deployer {
         require(_l2Token == expectedTokenAddress, "wrong address");
 
         // Deploy escrow
-        address _l2Escrow = _deployL2Escrow(_symbol, _originAddress, _l2Token);
+        address _l2Escrow = _deployL2Escrow(_symbol, _l1Token, _l2Token);
         require(_l2Escrow == expectedEscrowAddress, "wrong address");
 
         // Deploy Convertor
@@ -131,10 +139,12 @@ contract L2Deployer {
         tokenInfo[string(_symbol)] = TokenInfo({
             l1Escrow: _l1Escrow,
             l2Escrow: _l2Escrow,
-            l1Token: _originAddress,
+            l1Token: _l1Token,
             l2Token: _l2Token,
             l2Convertor: _l2Convertor
         });
+
+        emit NewToken(_l1Token, _l2Token, _l2Escrow, _l2Convertor);
     }
 
     function _deployL2Token(
@@ -257,7 +267,7 @@ contract L2Deployer {
         return
             create3Factory.getDeployed(
                 address(this),
-                keccak256(abi.encode(bytes("L2Token:"), _symbol))
+                keccak256(abi.encodePacked(bytes("L2Token:"), _symbol))
             );
     }
 
@@ -273,7 +283,7 @@ contract L2Deployer {
         return
             create3Factory.getDeployed(
                 address(this),
-                keccak256(abi.encode(bytes("L2Convertor:"), _symbol))
+                keccak256(abi.encodePacked(bytes("L2TokenConverter:"), _symbol))
             );
     }
 }

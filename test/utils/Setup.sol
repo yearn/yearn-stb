@@ -35,7 +35,7 @@ contract Setup is ExtendedTest {
     ERC20 public asset;
     IStrategy public mockStrategy;
 
-    address public zkEvmBridge = 0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe;
+    address public polygonZkEVMBridge = 0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe;
 
     address public rollupManager = 0x5132A183E9F3CB7C848b0AAC5Ae0c4f0491B7aB2;
 
@@ -75,10 +75,13 @@ contract Setup is ExtendedTest {
     address public czar = address(1);
     address public user = address(2);
     address public keeper = address(3);
+    address public l2Admin = address(70);
     address public management = address(4);
     address public governator = address(69);
     address public feeRecipient = address(5);
     address public emergencyAdmin = address(6);
+    address public l2RiskManager = address(48);
+    address public l2EscrowManager = address(67);
     
     mapping(string => address) public tokenAddrs;
 
@@ -139,7 +142,16 @@ contract Setup is ExtendedTest {
 
         l2TokenConverterImpl = new L2TokenConverter();
 
-        //l2Deployer = new L2Deployer();
+        l2Deployer = new L2Deployer(
+            l2Admin,
+            l2RiskManager,
+            l2EscrowManager,
+            polygonZkEVMBridge,
+            address(l1Deployer),
+            address(l2TokenImpl),
+            address(l2EscrowImpl),
+            address(l2TokenConverterImpl)
+        );
 
         // Make sure everything works with USDT
         asset = ERC20(tokenAddrs["DAI"]);

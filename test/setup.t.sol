@@ -20,16 +20,11 @@ contract SetupTest is Setup {
         assertNeq(address(l2EscrowImpl), address(0));
         assertNeq(address(l2TokenImpl), address(0));
         assertNeq(address(l2TokenConverterImpl), address(0));
-        bytes memory symbol = bytes(asset.symbol());
-        string memory made = string.concat(string(symbol), ".e");
-        console.log("Symbol ", made);   
-        assert(false);
     }
 
     function test_newVault() public {
         // Pretend to be the rollup 1
         uint32 rollupID = 1;
-        address rollupContract = 0x519E42c24163192Dca44CD3fBDCEBF6be9130987;
         address admin = 0x242daE44F5d8fb54B198D03a94dA45B5a4413e21;
         address manager = address(123);
 
@@ -40,5 +35,21 @@ contract SetupTest is Setup {
         l1Deployer.registerRollup(rollupID, manager);
 
         l1Deployer.newAsset(rollupID, address(asset));
+    }
+
+    function test_newToken() public {
+        uint32 rollupID = 1;
+        address admin = 0x242daE44F5d8fb54B198D03a94dA45B5a4413e21;
+        address manager = address(123);
+
+        vm.prank(admin);
+        l1Deployer.registerRollup(rollupID, manager);
+
+        address _l1Escrow;
+        ( , _l1Escrow) =  l1Deployer.newAsset(rollupID, address(asset));
+        bytes memory data = abi.encode(address(asset), _l1Escrow, asset.name(), bytes(asset.symbol()));
+
+        vm.prank(polygonZkEVMBridge);
+        l2Deployer.onMessageReceived(address(l1Deployer), 0, data);
     }
 }

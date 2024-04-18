@@ -306,8 +306,8 @@ contract L1Deployer is RoleManager {
         IPolygonZkEVMBridge(polygonZkEVMBridge).bridgeMessage(
             _rollupID,
             getPositionHolder(L2_DEPLOYER),
-            false,
-            abi.encode(_asset, _l1Escrow, ERC20(_asset).name(), string(symbol))
+            true,
+            abi.encode(_asset, _l1Escrow, ERC20(_asset).name(), symbol)
         );
 
         emit NewL1Escrow(_rollupID, _l1Escrow);
@@ -358,7 +358,7 @@ contract L1Deployer is RoleManager {
         return
             create3Factory.getDeployed(
                 getPositionHolder(L2_DEPLOYER),
-                keccak256(abi.encode(bytes("L2Token:"), _symbol))
+                keccak256(abi.encodePacked(bytes("L2Token:"), _symbol))
             );
     }
 
