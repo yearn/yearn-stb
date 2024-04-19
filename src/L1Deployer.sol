@@ -258,26 +258,24 @@ contract L1Deployer is DeployerBase, RoleManager {
 
         bytes memory symbol = bytes(ERC20(_asset).symbol());
 
-        bytes memory data = abi.encodeWithSelector(
-            L1YearnEscrow.initialize.selector,
-            _chainConfig.rollupContract.admin(),
-            _chainConfig.manager,
-            polygonZkEVMBridge,
-            _getL2EscrowAddress(symbol),
-            _rollupID,
-            _asset,
-            _getL2TokenAddress(symbol),
-            _vault
+        bytes memory data = abi.encodeCall(
+            L1YearnEscrow.initialize,
+            (
+                _chainConfig.rollupContract.admin(),
+                _chainConfig.manager,
+                address(polygonZkEVMBridge),
+                _getL2EscrowAddress(symbol),
+                _rollupID,
+                _asset,
+                _getL2TokenAddress(symbol),
+                _vault
+            )
         );
 
-        bytes memory creationCode = abi.encodePacked(
-            type(Proxy).creationCode,
-            abi.encode(address(getPositionHolder(ESCROW_IMPLEMENTATION)), data)
-        );
-
-        _l1Escrow = create3Factory.deploy(
+        _l1Escrow = _create3Deploy(
             keccak256(abi.encodePacked(bytes("L1Escrow:"), symbol)),
-            creationCode
+            getPositionHolder(ESCROW_IMPLEMENTATION),
+            data
         );
 
         // Make sure we got the right address.

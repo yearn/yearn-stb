@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.20;
 
-import {Proxy} from "@zkevm-stb/Proxy.sol";
 import {L2Escrow} from "@zkevm-stb/L2Escrow.sol";
 import {L2Token} from "@zkevm-stb/L2Token.sol";
 import {L2TokenConverter} from "@zkevm-stb/L2TokenConverter.sol";
@@ -31,11 +30,11 @@ contract L2Deployer is DeployerBase {
 
     address public l2Admin;
 
+    address public l1Deployer;
+
     address public riskManager;
 
     address public escrowManager;
-
-    address public counterpartContract;
 
     address public tokenImplementation;
 
@@ -48,18 +47,18 @@ contract L2Deployer is DeployerBase {
 
     constructor(
         address _l2Admin,
+        address _l1Deployer,
         address _riskManager,
         address _escrowManager,
         address _polygonZkEVMBridge,
-        address _counterpartContract,
         address _tokenImplementation,
         address _escrowImplementation,
         address _convertorImplementation
     ) DeployerBase(_polygonZkEVMBridge) {
         l2Admin = _l2Admin;
+        l1Deployer = _l1Deployer;
         riskManager = _riskManager;
         escrowManager = _escrowManager;
-        counterpartContract = _counterpartContract;
         tokenImplementation = _tokenImplementation;
         escrowImplementation = _escrowImplementation;
         convertorImplementation = _convertorImplementation;
@@ -82,7 +81,7 @@ contract L2Deployer is DeployerBase {
             "L2Deployer: Not PolygonZkEVMBridge"
         );
         require(
-            counterpartContract == originAddress,
+            l1Deployer == originAddress,
             "L2Deployer: Not counterpart contract"
         );
         require(
@@ -149,25 +148,18 @@ contract L2Deployer is DeployerBase {
         bytes memory _symbol,
         address _l2Escrow,
         address _l2Convertor
-    ) internal virtual returns (address _tokenAddress) {
-        bytes memory data = abi.encodeWithSelector(
-            L2Token.initialize.selector,
-            l2Admin,
-            _l2Escrow,
-            _l2Convertor,
-            _name,
-            string(_symbol)
+    ) internal virtual returns (address) {
+        bytes memory data = abi.encodeCall(
+            L2Token.initialize,
+            (l2Admin, _l2Escrow, _l2Convertor, _name, string(_symbol))
         );
 
-        bytes memory creationCode = abi.encodePacked(
-            type(Proxy).creationCode,
-            abi.encode(tokenImplementation, data)
-        );
-
-        _tokenAddress = create3Factory.deploy(
-            keccak256(abi.encodePacked(bytes("L2Token:"), _symbol)),
-            creationCode
-        );
+        return
+            _create3Deploy(
+                keccak256(abi.encodePacked(bytes("L2Token:"), _symbol)),
+                tokenImplementation,
+                data
+            );
     }
 
     function _deployL2Escrow(
@@ -175,53 +167,48 @@ contract L2Deployer is DeployerBase {
         address _l1Token,
         address _l2TokenAddress,
         address _l1Escrow
-    ) internal virtual returns (address _escrowAddress) {
-        bytes memory data = abi.encodeWithSelector(
-            L2Escrow.initialize.selector,
-            l2Admin,
-            address(polygonZkEVMBridge),
-            _l1Escrow,
-            ORIGIN_NETWORK_ID,
-            _l1Token,
-            _l2TokenAddress
+    ) internal virtual returns (address) {
+        bytes memory data = abi.encodeCall(
+            L2Escrow.initialize,
+            (
+                l2Admin,
+                address(polygonZkEVMBridge),
+                _l1Escrow,
+                ORIGIN_NETWORK_ID,
+                _l1Token,
+                _l2TokenAddress
+            )
         );
 
-        bytes memory creationCode = abi.encodePacked(
-            type(Proxy).creationCode,
-            abi.encode(escrowImplementation, data)
-        );
-
-        _escrowAddress = create3Factory.deploy(
-            keccak256(abi.encodePacked(bytes("L2Escrow:"), _symbol)),
-            creationCode
-        );
+        return
+            _create3Deploy(
+                keccak256(abi.encodePacked(bytes("L2Escrow:"), _symbol)),
+                escrowImplementation,
+                data
+            );
     }
 
     function _deployL2Convertor(
         bytes memory _symbol,
         address _l2Token
-    ) internal virtual returns (address _convertorAddress) {
-        bytes memory data = abi.encodeWithSelector(
-            L2TokenConverter.initialize.selector,
-            l2Admin,
-            escrowManager,
-            riskManager,
-            _l2Token
+    ) internal virtual returns (address) {
+        bytes memory data = abi.encodeCall(
+            L2TokenConverter.initialize,
+            (l2Admin, escrowManager, riskManager, _l2Token)
         );
 
-        bytes memory creationCode = abi.encodePacked(
-            type(Proxy).creationCode,
-            abi.encode(convertorImplementation, data)
-        );
-
-        _convertorAddress = create3Factory.deploy(
-            keccak256(abi.encodePacked(bytes("L2TokenConverter:"), _symbol)),
-            creationCode
-        );
+        return
+            _create3Deploy(
+                keccak256(
+                    abi.encodePacked(bytes("L2TokenConverter:"), _symbol)
+                ),
+                convertorImplementation,
+                data
+            );
     }
 
     function getL1Deployer() public view virtual override returns (address) {
-        return counterpartContract;
+        return l1Deployer;
     }
 
     function getL2Deployer() public view virtual override returns (address) {
