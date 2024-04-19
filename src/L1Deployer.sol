@@ -256,30 +256,28 @@ contract L1Deployer is DeployerBase, RoleManager {
     ) internal returns (address _l1Escrow) {
         ChainConfig storage _chainConfig = chainConfig[_rollupID];
 
-        bytes memory symbol = bytes(ERC20(_asset).symbol());
-
         bytes memory data = abi.encodeCall(
             L1YearnEscrow.initialize,
             (
                 _chainConfig.rollupContract.admin(),
                 _chainConfig.manager,
                 address(polygonZkEVMBridge),
-                _getL2EscrowAddress(symbol),
+                getL2EscrowAddress(_asset),
                 _rollupID,
                 _asset,
-                _getL2TokenAddress(symbol),
+                getL2TokenAddress(_asset),
                 _vault
             )
         );
 
         _l1Escrow = _create3Deploy(
-            keccak256(abi.encodePacked(bytes("L1Escrow:"), symbol)),
+            keccak256(abi.encodePacked(bytes("L1Escrow:"), _asset)),
             getPositionHolder(ESCROW_IMPLEMENTATION),
             data
         );
 
         // Make sure we got the right address.
-        require(_l1Escrow == _getL1EscrowAddress(symbol), "wrong address");
+        require(_l1Escrow == getL1EscrowAddress(_asset), "wrong address");
 
         // Set the mapping
         _chainConfig.escrows[_asset] = _l1Escrow;
@@ -290,7 +288,12 @@ contract L1Deployer is DeployerBase, RoleManager {
             _rollupID,
             getPositionHolder(L2_DEPLOYER),
             true,
-            abi.encode(_asset, _l1Escrow, ERC20(_asset).name(), symbol)
+            abi.encode(
+                _asset,
+                _l1Escrow,
+                ERC20(_asset).name(),
+                ERC20(_asset).symbol()
+            )
         );
 
         emit NewL1Escrow(_rollupID, _l1Escrow);

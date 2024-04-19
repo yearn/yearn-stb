@@ -3,7 +3,6 @@ pragma solidity ^0.8.20;
 
 import {Proxy} from "@zkevm-stb/Proxy.sol";
 import {ICREATE3Factory} from "./interfaces/ICREATE3Factory.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IPolygonZkEVMBridge} from "./interfaces/Polygon/IPolygonZkEVMBridge.sol";
 
 /**
@@ -46,106 +45,67 @@ abstract contract DeployerBase {
     function getL2Deployer() public view virtual returns (address);
 
     /**
-     * @notice Get expected L1 escrow address for a given asset
-     * @param _asset Address of the asset
-     * @return Address of the expected L1 escrow contract
+     * @notice Get expected L2 token address for a given asset
+     * @param _l1TokenAddress Address of the L1 token
+     * @return Address of the expected L2 token contract
      */
-    function getL1EscrowAddress(
-        address _asset
-    ) external view virtual returns (address) {
-        return _getL1EscrowAddress(bytes(ERC20(_asset).symbol()));
+    function getL2TokenAddress(
+        address _l1TokenAddress
+    ) public view virtual returns (address) {
+        return
+            create3Factory.getDeployed(
+                getL2Deployer(),
+                keccak256(abi.encodePacked(bytes("L2Token:"), _l1TokenAddress))
+            );
     }
 
     /**
-     * @notice Internal function to get expected L1 escrow address for a given asset
-     * @param _symbol Symbol of the asset
+     * @notice Get expected L1 escrow address for a given asset
+     * @param _l1TokenAddress Address of the L1 token
      * @return Address of the expected L1 escrow contract
      */
-    function _getL1EscrowAddress(
-        bytes memory _symbol
-    ) internal view returns (address) {
+    function getL1EscrowAddress(
+        address _l1TokenAddress
+    ) public view virtual returns (address) {
         return
             create3Factory.getDeployed(
                 getL1Deployer(),
-                keccak256(abi.encodePacked(bytes("L1Escrow:"), _symbol))
+                keccak256(abi.encodePacked(bytes("L1Escrow:"), _l1TokenAddress))
             );
     }
 
     /**
      * @notice Get expected L2 escrow address for a given asset
-     * @param _asset Address of the asset
+     * @param _l1TokenAddress Address of the L1 token
      * @return Address of the expected L2 escrow contract
      */
     function getL2EscrowAddress(
-        address _asset
-    ) external view virtual returns (address) {
-        return _getL2EscrowAddress(bytes(ERC20(_asset).symbol()));
-    }
-
-    /**
-     * @notice Internal function to get expected L2 escrow address for a given asset
-     * @param _symbol Symbol of the asset
-     * @return Address of the expected L2 escrow contract
-     */
-    function _getL2EscrowAddress(
-        bytes memory _symbol
-    ) internal view returns (address) {
+        address _l1TokenAddress
+    ) public view virtual returns (address) {
         return
             create3Factory.getDeployed(
                 getL2Deployer(),
-                keccak256(abi.encodePacked(bytes("L2Escrow:"), _symbol))
-            );
-    }
-
-    /**
-     * @notice Get expected L2 token address for a given asset
-     * @param _asset Address of the asset
-     * @return Address of the expected L2 token contract
-     */
-    function getL2TokenAddress(
-        address _asset
-    ) external view virtual returns (address) {
-        return _getL2TokenAddress(bytes(ERC20(_asset).symbol()));
-    }
-
-    /**
-     * @notice Internal function to get expected L2 token address for a given asset
-     * @param _symbol Symbol of the asset
-     * @return Address of the expected L2 token contract
-     */
-    function _getL2TokenAddress(
-        bytes memory _symbol
-    ) internal view returns (address) {
-        return
-            create3Factory.getDeployed(
-                getL2Deployer(),
-                keccak256(abi.encodePacked(bytes("L2Token:"), _symbol))
+                keccak256(abi.encodePacked(bytes("L2Escrow:"), _l1TokenAddress))
             );
     }
 
     /**
      * @notice Get expected L2 converter address for a given asset
-     * @param _asset Address of the asset
+     * @param _l1TokenAddress Address of the L1 token
      * @return Address of the expected L2 converter contract
      */
     function getL2ConvertorAddress(
-        address _asset
-    ) external view virtual returns (address) {
-        return _getL2ConvertorAddress(bytes(ERC20(_asset).symbol()));
-    }
-
-    /**
-     * @notice Internal function to get expected L2 converter address for a given asset
-     * @param _symbol Symbol of the asset
-     * @return Address of the expected L2 converter contract
-     */
-    function _getL2ConvertorAddress(
-        bytes memory _symbol
-    ) internal view returns (address) {
+        address _l1TokenAddress
+    ) public view virtual returns (address) {
         return
             create3Factory.getDeployed(
                 getL2Deployer(),
-                keccak256(abi.encodePacked(bytes("L2TokenConverter:"), _symbol))
+                keccak256(
+                    abi.encodePacked(
+                        bytes("L2TokenConverter:"),
+                        _l1TokenAddress
+                    )
+                )
             );
     }
 

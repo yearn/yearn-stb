@@ -26,21 +26,37 @@ contract L2Deployer is DeployerBase {
         address l2Convertor;
     }
 
+    /// @notice Emitted when a new address is set for a position.
+    event UpdatePositionHolder(
+        bytes32 indexed position,
+        address indexed newAddress
+    );
+
+    /// @notice Only allow position holder to call.
+    modifier onlyPositionHolder(bytes32 _positionId) {
+        _isPositionHolder(_positionId);
+        _;
+    }
+
+    /// @notice Check if the msg sender is specified position holder.
+    function _isPositionHolder(bytes32 _positionId) internal view virtual {
+        require(msg.sender == getPositionHolder(_positionId), "!allowed");
+    }
+
     uint32 internal constant ORIGIN_NETWORK_ID = 0;
 
-    address public l2Admin;
+    /// @notice Position ID's for all used positions
+    bytes32 public constant L2_ADMIN = keccak256("L2 Admin");
+    bytes32 public constant RISK_MANAGER = keccak256("Risk Manager");
+    bytes32 public constant PENDING_ADMIN = keccak256("Pending Admin");
+    bytes32 public constant ESCROW_MANAGER = keccak256("Escrow Manager");
+    bytes32 public constant TOKEN_IMPLEMENTATION =
+        keccak256("Token Implementation");
+    bytes32 public constant CONVERTOR_IMPLEMENTATION =
+        keccak256("Convertor Implementation");
 
-    address public l1Deployer;
-
-    address public riskManager;
-
-    address public escrowManager;
-
-    address public tokenImplementation;
-
-    address public escrowImplementation;
-
-    address public convertorImplementation;
+    /// @notice Mapping of position ID to holder.
+    mapping(bytes32 => address) internal _positions;
 
     // L1 Address => struct
     mapping(address => TokenInfo) public tokenInfo;
@@ -55,13 +71,21 @@ contract L2Deployer is DeployerBase {
         address _escrowImplementation,
         address _convertorImplementation
     ) DeployerBase(_polygonZkEVMBridge) {
-        l2Admin = _l2Admin;
-        l1Deployer = _l1Deployer;
-        riskManager = _riskManager;
-        escrowManager = _escrowManager;
-        tokenImplementation = _tokenImplementation;
-        escrowImplementation = _escrowImplementation;
-        convertorImplementation = _convertorImplementation;
+        _setPositionHolder(L2_ADMIN, _l2Admin);
+        _setPositionHolder(L1_DEPLOYER, _l1Deployer);
+        _setPositionHolder(RISK_MANAGER, _riskManager);
+        _setPositionHolder(ESCROW_MANAGER, _escrowManager);
+        _setPositionHolder(ESCROW_MANAGER, _escrowImplementation);
+        _setPositionHolder(TOKEN_IMPLEMENTATION, _tokenImplementation);
+        _setPositionHolder(ESCROW_IMPLEMENTATION, _escrowImplementation);
+        _setPositionHolder(CONVERTOR_IMPLEMENTATION, _convertorImplementation);
+    }
+
+    /**
+     * @notice Get the name of this contract.
+     */
+    function name() external view virtual returns (string memory) {
+        return "L2 Stake the Bridge Deployer";
     }
 
     /**
@@ -81,7 +105,7 @@ contract L2Deployer is DeployerBase {
             "L2Deployer: Not PolygonZkEVMBridge"
         );
         require(
-            l1Deployer == originAddress,
+            getPositionHolder(L1_DEPLOYER) == originAddress,
             "L2Deployer: Not counterpart contract"
         );
         require(
@@ -102,34 +126,30 @@ contract L2Deployer is DeployerBase {
             address _l1Token,
             address _l1Escrow,
             string memory _name,
-            bytes memory _symbol
-        ) = abi.decode(data, (address, address, string, bytes));
+            string memory _symbol
+        ) = abi.decode(data, (address, address, string, string));
 
         // Get addresses
-        address expectedTokenAddress = _getL2TokenAddress(_symbol);
-        address expectedEscrowAddress = _getL2EscrowAddress(_symbol);
-        address expectedConvertorAddress = _getL2ConvertorAddress(_symbol);
+        address expectedTokenAddress = getL2TokenAddress(_l1Token);
+        address expectedEscrowAddress = getL2EscrowAddress(_l1Token);
+        address expectedConvertorAddress = getL2ConvertorAddress(_l1Token);
 
         // Deploy Token
         address _l2Token = _deployL2Token(
             _name,
             _symbol,
+            _l1Token,
             expectedEscrowAddress,
             expectedConvertorAddress
         );
         require(_l2Token == expectedTokenAddress, "wrong address");
 
         // Deploy escrow
-        address _l2Escrow = _deployL2Escrow(
-            _symbol,
-            _l1Token,
-            _l2Token,
-            _l1Escrow
-        );
+        address _l2Escrow = _deployL2Escrow(_l1Token, _l2Token, _l1Escrow);
         require(_l2Escrow == expectedEscrowAddress, "wrong address");
 
         // Deploy Convertor
-        address _l2Convertor = _deployL2Convertor(_symbol, _l2Token);
+        address _l2Convertor = _deployL2Convertor(_l1Token, _l2Token);
         require(_l2Convertor == expectedConvertorAddress, "wrong address");
 
         // Store Data
@@ -145,25 +165,31 @@ contract L2Deployer is DeployerBase {
 
     function _deployL2Token(
         string memory _name,
-        bytes memory _symbol,
+        string memory _symbol,
+        address _l1Token,
         address _l2Escrow,
         address _l2Convertor
     ) internal virtual returns (address) {
         bytes memory data = abi.encodeCall(
             L2Token.initialize,
-            (l2Admin, _l2Escrow, _l2Convertor, _name, string(_symbol))
+            (
+                getPositionHolder(L2_ADMIN),
+                _l2Escrow,
+                _l2Convertor,
+                _name,
+                _symbol
+            )
         );
 
         return
             _create3Deploy(
-                keccak256(abi.encodePacked(bytes("L2Token:"), _symbol)),
-                tokenImplementation,
+                keccak256(abi.encodePacked(bytes("L2Token:"), _l1Token)),
+                getPositionHolder(TOKEN_IMPLEMENTATION),
                 data
             );
     }
 
     function _deployL2Escrow(
-        bytes memory _symbol,
         address _l1Token,
         address _l2TokenAddress,
         address _l1Escrow
@@ -171,7 +197,7 @@ contract L2Deployer is DeployerBase {
         bytes memory data = abi.encodeCall(
             L2Escrow.initialize,
             (
-                l2Admin,
+                getPositionHolder(L2_ADMIN),
                 address(polygonZkEVMBridge),
                 _l1Escrow,
                 ORIGIN_NETWORK_ID,
@@ -182,33 +208,83 @@ contract L2Deployer is DeployerBase {
 
         return
             _create3Deploy(
-                keccak256(abi.encodePacked(bytes("L2Escrow:"), _symbol)),
-                escrowImplementation,
+                keccak256(abi.encodePacked(bytes("L2Escrow:"), _l1Token)),
+                getPositionHolder(ESCROW_IMPLEMENTATION),
                 data
             );
     }
 
     function _deployL2Convertor(
-        bytes memory _symbol,
+        address _l1Token,
         address _l2Token
     ) internal virtual returns (address) {
         bytes memory data = abi.encodeCall(
             L2TokenConverter.initialize,
-            (l2Admin, escrowManager, riskManager, _l2Token)
+            (
+                getPositionHolder(L2_ADMIN),
+                getPositionHolder(ESCROW_MANAGER),
+                getPositionHolder(RISK_MANAGER),
+                _l2Token
+            )
         );
 
         return
             _create3Deploy(
                 keccak256(
-                    abi.encodePacked(bytes("L2TokenConverter:"), _symbol)
+                    abi.encodePacked(bytes("L2TokenConverter:"), _l1Token)
                 ),
-                convertorImplementation,
+                getPositionHolder(CONVERTOR_IMPLEMENTATION),
                 data
             );
     }
 
+    /**
+     * @notice Setter function for updating a positions holder.
+     * @param _position Identifier for the position.
+     * @param _newHolder New address for position.
+     */
+    function setPositionHolder(
+        bytes32 _position,
+        address _newHolder
+    ) external virtual onlyPositionHolder(L2_ADMIN) {
+        require(_position != L2_ADMIN, "!two step flow");
+        _setPositionHolder(_position, _newHolder);
+    }
+
+    /**
+     * @notice Accept the Governator role.
+     * @dev Caller must be the Pending Governator.
+     */
+    function acceptAdmin() external virtual onlyPositionHolder(PENDING_ADMIN) {
+        _setPositionHolder(L2_ADMIN, msg.sender);
+        _setPositionHolder(PENDING_ADMIN, address(0));
+    }
+
+    /**
+     * @notice Setter function for updating a positions holder.
+     */
+    function _setPositionHolder(
+        bytes32 _position,
+        address _newHolder
+    ) internal virtual {
+        _positions[_position] = _newHolder;
+
+        emit UpdatePositionHolder(_position, _newHolder);
+    }
+
+    /**
+     * @notice Get the current address assigned to a specific position.
+     * @param _positionId The position identifier.
+     * @return The current address assigned to the specified position.
+     */
+    function getPositionHolder(
+        bytes32 _positionId
+    ) public view virtual returns (address) {
+        return _positions[_positionId];
+    }
+
     function getL1Deployer() public view virtual override returns (address) {
-        return l1Deployer;
+        return getPositionHolder(L1_DEPLOYER);
     }
 
     function getL2Deployer() public view virtual override returns (address) {
