@@ -2,17 +2,17 @@
 pragma solidity ^0.8.20;
 
 import {Proxy} from "@zkevm-stb/Proxy.sol";
-import {ICREATE3Factory} from "./interfaces/ICREATE3Factory.sol";
-
 import {L2Escrow} from "@zkevm-stb/L2Escrow.sol";
 import {L2Token} from "@zkevm-stb/L2Token.sol";
 import {L2TokenConverter} from "@zkevm-stb/L2TokenConverter.sol";
 
-import {ICREATE3Factory} from "./interfaces/ICREATE3Factory.sol";
-
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract L2Deployer {
+import {DeployerBase} from "./DeployerBase.sol";
+
+// Array of tokens?
+// m
+contract L2Deployer is DeployerBase {
     event NewToken(
         address indexed l1Token,
         address indexed l2Token,
@@ -21,7 +21,6 @@ contract L2Deployer {
     );
 
     struct TokenInfo {
-        address l1Token;
         address l2Token;
         address l1Escrow;
         address l2Escrow;
@@ -30,18 +29,13 @@ contract L2Deployer {
 
     uint32 internal constant ORIGIN_NETWORK_ID = 0;
 
-    ICREATE3Factory internal constant create3Factory =
-        ICREATE3Factory(0x93FEC2C00BfE902F733B57c5a6CeeD7CD1384AE1);
-
-    address public immutable polygonZkEVMBridge;
-
-    address public immutable counterpartContract;
-
     address public l2Admin;
 
     address public riskManager;
 
     address public escrowManager;
+
+    address public counterpartContract;
 
     address public tokenImplementation;
 
@@ -49,8 +43,8 @@ contract L2Deployer {
 
     address public convertorImplementation;
 
-    //
-    mapping(string => TokenInfo) public tokenInfo;
+    // L1 Address => struct
+    mapping(address => TokenInfo) public tokenInfo;
 
     constructor(
         address _l2Admin,
@@ -61,11 +55,10 @@ contract L2Deployer {
         address _tokenImplementation,
         address _escrowImplementation,
         address _convertorImplementation
-    ) {
+    ) DeployerBase(_polygonZkEVMBridge) {
         l2Admin = _l2Admin;
         riskManager = _riskManager;
         escrowManager = _escrowManager;
-        polygonZkEVMBridge = _polygonZkEVMBridge;
         counterpartContract = _counterpartContract;
         tokenImplementation = _tokenImplementation;
         escrowImplementation = _escrowImplementation;
@@ -85,7 +78,7 @@ contract L2Deployer {
     ) external payable {
         // Can only be called by the bridge
         require(
-            polygonZkEVMBridge == msg.sender,
+            address(polygonZkEVMBridge) == msg.sender,
             "L2Deployer: Not PolygonZkEVMBridge"
         );
         require(
@@ -128,7 +121,12 @@ contract L2Deployer {
         require(_l2Token == expectedTokenAddress, "wrong address");
 
         // Deploy escrow
-        address _l2Escrow = _deployL2Escrow(_symbol, _l1Token, _l2Token);
+        address _l2Escrow = _deployL2Escrow(
+            _symbol,
+            _l1Token,
+            _l2Token,
+            _l1Escrow
+        );
         require(_l2Escrow == expectedEscrowAddress, "wrong address");
 
         // Deploy Convertor
@@ -136,11 +134,10 @@ contract L2Deployer {
         require(_l2Convertor == expectedConvertorAddress, "wrong address");
 
         // Store Data
-        tokenInfo[string(_symbol)] = TokenInfo({
+        tokenInfo[_l1Token] = TokenInfo({
+            l2Token: _l2Token,
             l1Escrow: _l1Escrow,
             l2Escrow: _l2Escrow,
-            l1Token: _l1Token,
-            l2Token: _l2Token,
             l2Convertor: _l2Convertor
         });
 
@@ -175,16 +172,17 @@ contract L2Deployer {
 
     function _deployL2Escrow(
         bytes memory _symbol,
-        address _originTokenAddress,
-        address _l2TokenAddress
+        address _l1Token,
+        address _l2TokenAddress,
+        address _l1Escrow
     ) internal virtual returns (address _escrowAddress) {
         bytes memory data = abi.encodeWithSelector(
             L2Escrow.initialize.selector,
             l2Admin,
-            polygonZkEVMBridge,
-            counterpartContract,
+            address(polygonZkEVMBridge),
+            _l1Escrow,
             ORIGIN_NETWORK_ID,
-            _originTokenAddress,
+            _l1Token,
             _l2TokenAddress
         );
 
@@ -222,68 +220,11 @@ contract L2Deployer {
         );
     }
 
-    function getL1EscrowAddress(
-        address _asset
-    ) external view virtual returns (address) {
-        return _getL1EscrowAddress(bytes(ERC20(_asset).symbol()));
+    function getL1Deployer() public view virtual override returns (address) {
+        return counterpartContract;
     }
 
-    function _getL1EscrowAddress(
-        bytes memory _symbol
-    ) internal view returns (address) {
-        return
-            create3Factory.getDeployed(
-                counterpartContract,
-                keccak256(abi.encodePacked(bytes("L1Escrow:"), _symbol))
-            );
-    }
-
-    function getL2EscrowAddress(
-        address _asset
-    ) external view virtual returns (address) {
-        return _getL2EscrowAddress(bytes(ERC20(_asset).symbol()));
-    }
-
-    // Address will be the L2 deployer
-    function _getL2EscrowAddress(
-        bytes memory _symbol
-    ) internal view returns (address) {
-        return
-            create3Factory.getDeployed(
-                address(this),
-                keccak256(abi.encodePacked(bytes("L2Escrow:"), _symbol))
-            );
-    }
-
-    function getL2TokenAddress(
-        address _asset
-    ) external view virtual returns (address) {
-        return _getL2TokenAddress(bytes(ERC20(_asset).symbol()));
-    }
-
-    function _getL2TokenAddress(
-        bytes memory _symbol
-    ) internal view returns (address) {
-        return
-            create3Factory.getDeployed(
-                address(this),
-                keccak256(abi.encodePacked(bytes("L2Token:"), _symbol))
-            );
-    }
-
-    function getL2ConvertorAddress(
-        address _asset
-    ) external view virtual returns (address) {
-        return _getL2ConvertorAddress(bytes(ERC20(_asset).symbol()));
-    }
-
-    function _getL2ConvertorAddress(
-        bytes memory _symbol
-    ) internal view returns (address) {
-        return
-            create3Factory.getDeployed(
-                address(this),
-                keccak256(abi.encodePacked(bytes("L2TokenConverter:"), _symbol))
-            );
+    function getL2Deployer() public view virtual override returns (address) {
+        return address(this);
     }
 }

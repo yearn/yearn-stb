@@ -4,29 +4,27 @@ pragma solidity ^0.8.20;
 import {L1YearnEscrow} from "./L1YearnEscrow.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
-import {IPolygonZkEVMBridge} from "@zkevm-stb/interfaces/IPolygonZkEVMBridge.sol";
 import {IPolygonRollupManager, IPolygonRollupContract} from "./interfaces/Polygon/IPolygonRollupManager.sol";
 
 import {Proxy} from "@zkevm-stb/Proxy.sol";
 
 import {RoleManager} from "./RoleManager.sol";
-
-import {ICREATE3Factory} from "./interfaces/ICREATE3Factory.sol";
-
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
+import {DeployerBase} from "./DeployerBase.sol";
+
 // TODO:
-//  1. Deposit Limits/module
+//  getters for custom position holders
 //  create 3 factory
 // External create3 Address getters
-
+//
 /// Governance Structure:
 // 1. GOVERNATOR Can change the Holders, Impl and addresses (Rare) 2/3 meta multisig (No Roles)
 // 2. CZAR/DADDY Sets strategies All Roles
 // 3. Management/SMS Day to Day Ops
 
 /// @title PolyYearn Stake the Bridge Role Manager.
-contract L1Deployer is RoleManager {
+contract L1Deployer is DeployerBase, RoleManager {
     event RegisteredNewRollup(
         uint32 indexed rollupID,
         address indexed rollupContract,
@@ -61,19 +59,7 @@ contract L1Deployer is RoleManager {
                            POSITION ID'S
     //////////////////////////////////////////////////////////////*/
 
-    bytes32 public constant ESCROW_IMPLEMENTATION =
-        keccak256("Escrow Implementation");
-
-    bytes32 public constant L2_DEPLOYER = keccak256("L2 Deployer");
-
-    ICREATE3Factory internal constant create3Factory =
-        ICREATE3Factory(0x93FEC2C00BfE902F733B57c5a6CeeD7CD1384AE1);
-
-    uint256 public immutable originalID;
-
-    address public immutable rollupManager;
-
-    address public immutable polygonZkEVMBridge;
+    IPolygonRollupManager public immutable rollupManager;
 
     /*//////////////////////////////////////////////////////////////
                            STORAGE
@@ -89,9 +75,10 @@ contract L1Deployer is RoleManager {
         address _emergencyAdmin,
         address _keeper,
         address _registry,
-        address _rollupManager,
+        address _polygonZkEVMBridge,
         address _escrowImplementation
     )
+        DeployerBase(_polygonZkEVMBridge)
         RoleManager(
             _governator,
             _czar,
@@ -101,11 +88,9 @@ contract L1Deployer is RoleManager {
             _registry
         )
     {
-        originalID = block.chainid;
-        rollupManager = _rollupManager;
-        polygonZkEVMBridge = IPolygonRollupManager(_rollupManager)
-            .bridgeAddress();
-
+        rollupManager = IPolygonRollupManager(
+            polygonZkEVMBridge.polygonRollupManager()
+        );
         _positions[ESCROW_IMPLEMENTATION].holder = _escrowImplementation;
     }
 
@@ -120,9 +105,9 @@ contract L1Deployer is RoleManager {
         );
         require(_l1Manager != address(0), "ZERO ADDRESS");
 
-        IPolygonRollupContract _rollupContract = IPolygonRollupManager(
-            rollupManager
-        ).rollupIDToRollupData(_rollupID).rollupContract;
+        IPolygonRollupContract _rollupContract = rollupManager
+            .rollupIDToRollupData(_rollupID)
+            .rollupContract;
         // Checks the rollup ID is valid and the caller is the rollup Admin.
         require(msg.sender == _rollupContract.admin(), "!admin");
 
@@ -303,7 +288,7 @@ contract L1Deployer is RoleManager {
 
         // Send Message to Bridge for L2
         // TODO: Will L2 Deployer be the same each chain?
-        IPolygonZkEVMBridge(polygonZkEVMBridge).bridgeMessage(
+        polygonZkEVMBridge.bridgeMessage(
             _rollupID,
             getPositionHolder(L2_DEPLOYER),
             true,
@@ -311,55 +296,6 @@ contract L1Deployer is RoleManager {
         );
 
         emit NewL1Escrow(_rollupID, _l1Escrow);
-    }
-
-    function getL1EscrowAddress(
-        address _asset
-    ) external view virtual returns (address) {
-        return _getL1EscrowAddress(bytes(ERC20(_asset).symbol()));
-    }
-
-    function _getL1EscrowAddress(
-        bytes memory _symbol
-    ) internal view returns (address) {
-        return
-            create3Factory.getDeployed(
-                address(this),
-                keccak256(abi.encodePacked(bytes("L1Escrow:"), _symbol))
-            );
-    }
-
-    function getL2EscrowAddress(
-        address _asset
-    ) external view virtual returns (address) {
-        return _getL2EscrowAddress(bytes(ERC20(_asset).symbol()));
-    }
-
-    // Address will be the L2 deployer
-    function _getL2EscrowAddress(
-        bytes memory _symbol
-    ) internal view returns (address) {
-        return
-            create3Factory.getDeployed(
-                getPositionHolder(L2_DEPLOYER),
-                keccak256(abi.encodePacked(bytes("L2Escrow:"), _symbol))
-            );
-    }
-
-    function getL2TokenAddress(
-        address _asset
-    ) external view virtual returns (address) {
-        return _getL2TokenAddress(bytes(ERC20(_asset).symbol()));
-    }
-
-    function _getL2TokenAddress(
-        bytes memory _symbol
-    ) internal view returns (address) {
-        return
-            create3Factory.getDeployed(
-                getPositionHolder(L2_DEPLOYER),
-                keccak256(abi.encodePacked(bytes("L2Token:"), _symbol))
-            );
     }
 
     /**
@@ -374,5 +310,13 @@ contract L1Deployer is RoleManager {
         address _asset
     ) public view virtual returns (address) {
         return chainConfig[_rollupID].escrows[_asset];
+    }
+
+    function getL1Deployer() public view virtual override returns (address) {
+        return address(this);
+    }
+
+    function getL2Deployer() public view virtual override returns (address) {
+        return getPositionHolder(L2_DEPLOYER);
     }
 }
