@@ -134,12 +134,10 @@ contract Setup is ExtendedTest {
             emergencyAdmin,
             keeper,
             address(registry),
+            address(allocatorFactory),
             address(polygonZkEVMBridge),
             address(l1EscrowImpl)
         );
-
-        vm.prank(governator);
-        registry.setEndorser(address(l1Deployer), true);
 
         l2TokenImpl = new L2Token();
 
@@ -157,6 +155,13 @@ contract Setup is ExtendedTest {
             address(l2EscrowImpl),
             address(l2TokenConverterImpl)
         );
+
+        vm.startPrank(governator);
+        registry.setEndorser(address(l1Deployer), true);
+        l1Deployer.setPositionHolder(l1Deployer.ACCOUNTANT(), address(accountant));
+        accountant.setVaultManager(address(l1Deployer));
+        l1Deployer.setPositionHolder(l1Deployer.L2_DEPLOYER(), address(l2Deployer));
+        vm.stopPrank();
 
         // Make sure everything works with USDT
         asset = ERC20(tokenAddrs["DAI"]);
@@ -184,8 +189,6 @@ contract Setup is ExtendedTest {
         vm.label(address(l2TokenConverterImpl), "L2 Convertor IMPL");
         vm.label(address(create3Factory), "Create 3 Factory");
     }
-
-    function setupVault() public returns (IVault) {}
 
     function setUpStrategy() public returns (IStrategy) {
         // we save the strategy as a IStrategyInterface to give it the needed interface

@@ -75,6 +75,7 @@ contract L1Deployer is DeployerBase, RoleManager {
         address _emergencyAdmin,
         address _keeper,
         address _registry,
+        address _allocatorFactory,
         address _polygonZkEVMBridge,
         address _escrowImplementation
     )
@@ -85,7 +86,8 @@ contract L1Deployer is DeployerBase, RoleManager {
             _management,
             _emergencyAdmin,
             _keeper,
-            _registry
+            _registry,
+            _allocatorFactory
         )
     {
         rollupManager = IPolygonRollupManager(
@@ -319,5 +321,15 @@ contract L1Deployer is DeployerBase, RoleManager {
 
     function getL2Deployer() public view virtual override returns (address) {
         return getPositionHolder(L2_DEPLOYER);
+    }
+
+    function getEscrowImplementation()
+        external
+        view
+        virtual
+        override
+        returns (address)
+    {
+        return getPositionHolder(ESCROW_IMPLEMENTATION);
     }
 }

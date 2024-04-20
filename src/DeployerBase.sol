@@ -12,9 +12,7 @@ import {IPolygonZkEVMBridge} from "./interfaces/Polygon/IPolygonZkEVMBridge.sol"
 abstract contract DeployerBase {
     bytes32 public constant ESCROW_IMPLEMENTATION =
         keccak256("Escrow Implementation");
-
     bytes32 public constant L1_DEPLOYER = keccak256("L1 Deployer");
-
     bytes32 public constant L2_DEPLOYER = keccak256("L2 Deployer");
 
     /// @notice Address of the ICREATE3Factory contract used for deployment
@@ -33,16 +31,22 @@ abstract contract DeployerBase {
     }
 
     /**
-     * @notice Abstract functions to get Layer 1 deployer address
+     * @notice Abstract functions to get the Layer 1 deployer address
      * @return Address of the Layer 1 deployer
      */
     function getL1Deployer() public view virtual returns (address);
 
     /**
-     * @notice Abstract functions to get Layer 2 deployer address
+     * @notice Abstract functions to get the Layer 2 deployer address
      * @return Address of the Layer 2 deployer
      */
     function getL2Deployer() public view virtual returns (address);
+
+    /**
+     * @notice Abstract functions to get the Escrow Implementation address
+     * @return Address of the Escrow Implementation.
+     */
+    function getEscrowImplementation() external view virtual returns (address);
 
     /**
      * @notice Get expected L2 token address for a given asset

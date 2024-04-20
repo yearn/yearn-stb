@@ -75,7 +75,6 @@ contract L2Deployer is DeployerBase {
         _setPositionHolder(L1_DEPLOYER, _l1Deployer);
         _setPositionHolder(RISK_MANAGER, _riskManager);
         _setPositionHolder(ESCROW_MANAGER, _escrowManager);
-        _setPositionHolder(ESCROW_MANAGER, _escrowImplementation);
         _setPositionHolder(TOKEN_IMPLEMENTATION, _tokenImplementation);
         _setPositionHolder(ESCROW_IMPLEMENTATION, _escrowImplementation);
         _setPositionHolder(CONVERTOR_IMPLEMENTATION, _convertorImplementation);
@@ -289,5 +288,44 @@ contract L2Deployer is DeployerBase {
 
     function getL2Deployer() public view virtual override returns (address) {
         return address(this);
+    }
+
+    function getEscrowImplementation()
+        external
+        view
+        virtual
+        override
+        returns (address)
+    {
+        return getPositionHolder(ESCROW_IMPLEMENTATION);
+    }
+
+    function getL2Admin() external view virtual returns (address) {
+        return getPositionHolder(L2_ADMIN);
+    }
+
+    function getRiskManager() external view virtual returns (address) {
+        return getPositionHolder(RISK_MANAGER);
+    }
+
+    function getPendingAdmin() external view virtual returns (address) {
+        return getPositionHolder(PENDING_ADMIN);
+    }
+
+    function getEscrowManager() external view virtual returns (address) {
+        return getPositionHolder(ESCROW_MANAGER);
+    }
+
+    function getTokenImplementation() external view virtual returns (address) {
+        return getPositionHolder(TOKEN_IMPLEMENTATION);
+    }
+
+    function getConvertorImplementation()
+        external
+        view
+        virtual
+        returns (address)
+    {
+        return getPositionHolder(CONVERTOR_IMPLEMENTATION);
     }
 }
