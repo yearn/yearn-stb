@@ -66,10 +66,6 @@ contract RoleManager {
         require(msg.sender == getPositionHolder(_positionId), "!allowed");
     }
 
-    // Encoded name so that it can be held as a constant.
-    bytes32 internal constant _name_ =
-        bytes32(abi.encodePacked("Stake the Bridge Role Manager"));
-
     /// @notice Rollup ID to use for the default vaults.
     uint32 internal constant DEFAULT_ID = 0;
 
@@ -121,7 +117,7 @@ contract RoleManager {
     mapping(address => VaultConfig) public vaultConfig;
 
     /// @notice Mapping of underlying asset => rollupID => vault address.
-    /// NOTE: We use 0 for the default vaults since that should never be a chain ID.
+    /// NOTE: We use 0 for the default vaults since that should never be an L2 ID.
     mapping(address => mapping(uint32 => address)) internal _assetToVault;
 
     constructor(
@@ -130,7 +126,8 @@ contract RoleManager {
         address _management,
         address _emergencyAdmin,
         address _keeper,
-        address _registry
+        address _registry,
+        address _allocatorFactory
     ) {
         chad = _czar;
 
@@ -148,7 +145,8 @@ contract RoleManager {
                     Roles.DEBT_MANAGER |
                     Roles.QUEUE_MANAGER |
                     Roles.DEPOSIT_LIMIT_MANAGER |
-                    Roles.DEBT_PURCHASER
+                    Roles.DEBT_PURCHASER |
+                    Roles.PROFIT_UNLOCK_MANAGER
             )
         });
 
@@ -171,6 +169,7 @@ contract RoleManager {
 
         // Set the registry
         _positions[REGISTRY].holder = _registry;
+        _positions[ALLOCATOR_FACTORY].holder = _allocatorFactory;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -607,7 +606,7 @@ contract RoleManager {
      * @notice Get the name of this contract.
      */
     function name() external view virtual returns (string memory) {
-        return string(abi.encodePacked(_name_));
+        return string(abi.encodePacked("L1 Stake the Bridge Deployer"));
     }
 
     /**
