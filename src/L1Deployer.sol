@@ -1,17 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.20;
 
+import {Proxy} from "@zkevm-stb/Proxy.sol";
+import {RoleManager} from "./RoleManager.sol";
+import {DeployerBase} from "./DeployerBase.sol";
 import {L1YearnEscrow} from "./L1YearnEscrow.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-
-import {IPolygonRollupManager, IPolygonRollupContract} from "./interfaces/Polygon/IPolygonRollupManager.sol";
-
-import {Proxy} from "@zkevm-stb/Proxy.sol";
-
-import {RoleManager} from "./RoleManager.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
-import {DeployerBase} from "./DeployerBase.sol";
+import {IPolygonRollupManager, IPolygonRollupContract} from "./interfaces/Polygon/IPolygonRollupManager.sol";
 
 // TODO:
 //  getters for custom position holders
