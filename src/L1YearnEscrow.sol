@@ -114,7 +114,12 @@ contract L1YearnEscrow is L1Escrow {
     function _receiveTokens(
         uint256 amount
     ) internal virtual override whenNotPaused {
-        super._receiveTokens(amount);
+        originTokenAddress().safeTransferFrom(
+            msg.sender,
+            address(this),
+            amount
+        );
+
         VaultStorage storage $ = _getVaultStorage();
         uint256 _minimumBuffer = $.minimumBuffer;
         // Deposit to the vault if above buffer
@@ -122,9 +127,8 @@ contract L1YearnEscrow is L1Escrow {
             uint256 underlyingBalance = originTokenAddress().balanceOf(
                 address(this)
             );
-            if (underlyingBalance <= _minimumBuffer) {
-                return;
-            }
+
+            if (underlyingBalance <= _minimumBuffer) return;
 
             unchecked {
                 amount = underlyingBalance - _minimumBuffer;
@@ -135,7 +139,8 @@ contract L1YearnEscrow is L1Escrow {
     }
 
     /**
-     * @dev Handle the transfer of the tokens
+     * @dev Handle the transfer of the tokens. Will send shares instead of
+     *      the underlying asset if the vault is illiquid.
      * @param destinationAddress Address destination that will receive the tokens on the other network
      * @param amount Token amount
      */
@@ -143,29 +148,41 @@ contract L1YearnEscrow is L1Escrow {
         address destinationAddress,
         uint256 amount
     ) internal virtual override whenNotPaused {
-        VaultStorage storage $ = _getVaultStorage();
+        IERC20 originToken = originTokenAddress();
 
-        // Check if there is enough loose balance.
-        uint256 underlyingBalance = originTokenAddress().balanceOf(
-            address(this)
-        );
-        if (underlyingBalance != 0) {
-            if (underlyingBalance >= amount) {
-                super._transferTokens(destinationAddress, amount);
-                return;
-            }
+        // Check if there is enough buffer.
+        uint256 underlyingBalance = originToken.balanceOf(address(this));
+        if (underlyingBalance >= amount) {
+            // Only use buffer if it covers the full amount.
+            originToken.safeTransfer(destinationAddress, amount);
+            return;
+        }
 
-            uint256 maxWithdraw = $.vaultAddress.maxWithdraw(address(this));
-            if (maxWithdraw < amount) {
-                super._transferTokens(destinationAddress, underlyingBalance);
+        // Check if the vault will allow for a full withdraw.
+        IVault _vault = _getVaultStorage().vaultAddress;
+        uint256 maxWithdraw = _vault.maxWithdraw(address(this));
+        // If liquidity will not allow for a full withdraw.
+        if (amount > maxWithdraw) {
+            // First use any loose balance.
+            if (underlyingBalance != 0) {
+                originToken.safeTransfer(destinationAddress, underlyingBalance);
                 unchecked {
                     amount = amount - underlyingBalance;
                 }
             }
+
+            // Check again to account for if there was underlying
+            if (amount > maxWithdraw) {
+                // Send an equivalent amount of shares for the difference.
+                uint256 shares = _vault.convertToShares(amount - maxWithdraw);
+                _vault.transfer(destinationAddress, shares);
+                if (maxWithdraw == 0) return;
+                amount = maxWithdraw;
+            }
         }
 
         // Withdraw from vault to receiver.
-        $.vaultAddress.withdraw(amount, destinationAddress, address(this));
+        _vault.withdraw(amount, destinationAddress, address(this));
     }
 
     // ****************************
@@ -175,15 +192,17 @@ contract L1YearnEscrow is L1Escrow {
     /**
      * @dev Escrow manager can withdraw the token backing
      * @param _recipient the recipient address
-     * @param _amount The amount of token
+     * @param _amount The amount of token in underlying
      */
     function withdraw(
         address _recipient,
         uint256 _amount
     ) external virtual override onlyRole(ESCROW_MANAGER_ROLE) whenNotPaused {
-        VaultStorage storage $ = _getVaultStorage();
-        uint256 shares = $.vaultAddress.convertToShares(_amount);
-        $.vaultAddress.transfer(_recipient, shares);
+        IVault _vault = _getVaultStorage().vaultAddress;
+        // Transfer the equivalent amount of vault shares
+        uint256 shares = _vault.convertToShares(_amount);
+        _vault.transfer(_recipient, shares);
+
         emit Withdraw(_recipient, _amount);
     }
 
@@ -201,10 +220,12 @@ contract L1YearnEscrow is L1Escrow {
     ) external virtual onlyRole(DEFAULT_ADMIN_ROLE) {
         VaultStorage storage $ = _getVaultStorage();
         IVault oldVault = $.vaultAddress;
+        IERC20 originToken = originTokenAddress();
+
         // If re-initializing to a new vault address.
         if (address(oldVault) != address(0)) {
             // Lower allowance to 0
-            originTokenAddress().forceApprove(address(oldVault), 0);
+            originToken.forceApprove(address(oldVault), 0);
 
             uint256 balance = oldVault.balanceOf(address(this));
             // Withdraw the full balance of the current vault.
@@ -216,10 +237,10 @@ contract L1YearnEscrow is L1Escrow {
         // Migrate to new vault if applicable
         if (_vaultAddress != address(0)) {
             // Max approve the new vault
-            originTokenAddress().forceApprove(_vaultAddress, 2 ** 256 - 1);
+            originToken.forceApprove(_vaultAddress, 2 ** 256 - 1);
 
             // Deposit any loose funds
-            uint256 balance = originTokenAddress().balanceOf(address(this));
+            uint256 balance = originToken.balanceOf(address(this));
             if (balance != 0)
                 IVault(_vaultAddress).deposit(balance, address(this));
         }

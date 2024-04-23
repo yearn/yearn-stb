@@ -288,6 +288,91 @@ contract EscrowTest is Setup {
         assertEq(vault.balanceOf(address(mockEscrow)), 0);
     }
 
+    function test_illiquidWithdraw(uint256 _amount) public {
+        _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
+
+        mockEscrow = deployMockL1Escrow();
+
+        // Simulate a bridge txn
+        mintAndBridge(mockEscrow, user, _amount);
+
+        assertEq(vault.totalAssets(), _amount);
+        assertEq(asset.balanceOf(user), 0);
+        assertEq(asset.balanceOf(address(mockEscrow)), 0);
+        assertEq(vault.balanceOf(address(mockEscrow)), _amount);
+
+        // send funds to a strategy
+        uint256 toLock = _amount / 2;
+        addStrategyAndDebt(vault, setUpStrategy(), toLock);
+        // And remove from queue
+        address[] memory queue = new address[](0);
+        vm.prank(governator);
+        vault.set_default_queue(queue);
+
+        assertEq(vault.maxWithdraw(address(mockEscrow)), _amount - toLock);
+
+        // Withdraw everything
+        bytes memory data = abi.encode(user, _amount);
+        vm.prank(address(polygonZkEVMBridge));
+        mockEscrow.onMessageReceived(address(l2EscrowImpl), l2RollupID, data);
+
+        // Should have sent the liquid balance and the rest in shares
+        assertEq(vault.totalAssets(), toLock);
+        assertEq(asset.balanceOf(user), _amount - toLock);
+        assertEq(vault.balanceOf(user), toLock);
+        assertEq(asset.balanceOf(address(mockEscrow)), 0);
+        assertEq(vault.balanceOf(address(mockEscrow)), 0);
+    }
+
+    function test_illiquidWithdraw_withBuffer(
+        uint256 _amount,
+        uint256 _minimumBuffer
+    ) public {
+        _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
+        _minimumBuffer = bound(_minimumBuffer, 10, _amount / 2);
+
+        mockEscrow = deployMockL1Escrow();
+
+        vm.prank(governator);
+        mockEscrow.updateMinimumBuffer(_minimumBuffer);
+
+        // Simulate a bridge txn
+        mintAndBridge(mockEscrow, user, _amount);
+
+        assertEq(vault.totalAssets(), _amount - _minimumBuffer);
+        assertEq(asset.balanceOf(user), 0);
+        assertEq(asset.balanceOf(address(mockEscrow)), _minimumBuffer);
+        assertEq(
+            vault.balanceOf(address(mockEscrow)),
+            _amount - _minimumBuffer
+        );
+
+        // send funds to a strategy
+        uint256 toLock = _amount / 2;
+        addStrategyAndDebt(vault, setUpStrategy(), toLock);
+        // And remove from queue
+        address[] memory queue = new address[](0);
+        vm.prank(governator);
+        vault.set_default_queue(queue);
+
+        assertEq(
+            vault.maxWithdraw(address(mockEscrow)),
+            _amount - _minimumBuffer - toLock
+        );
+
+        // Withdraw everything
+        bytes memory data = abi.encode(user, _amount);
+        vm.prank(address(polygonZkEVMBridge));
+        mockEscrow.onMessageReceived(address(l2EscrowImpl), l2RollupID, data);
+
+        // Should have sent the liquid balance and the rest in shares
+        assertEq(vault.totalAssets(), toLock);
+        assertEq(asset.balanceOf(user), _amount - toLock);
+        assertEq(vault.balanceOf(user), toLock);
+        assertEq(asset.balanceOf(address(mockEscrow)), 0);
+        assertEq(vault.balanceOf(address(mockEscrow)), 0);
+    }
+
     event BridgeEvent(
         uint8 leafType,
         uint32 originNetwork,

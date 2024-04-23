@@ -31,7 +31,7 @@ import {L2Escrow} from "@zkevm-stb/L2Escrow.sol";
 import {L2Token} from "@zkevm-stb/L2Token.sol";
 import {L2TokenConverter} from "@zkevm-stb/L2TokenConverter.sol";
 
-import {MockStrategy} from "../mocks/MockStrategy.sol";
+import {MockTokenizedStrategy} from "../mocks/MockTokenizedStrategy.sol";
 
 contract Setup is ExtendedTest {
     using SafeERC20 for ERC20;
@@ -234,7 +234,7 @@ contract Setup is ExtendedTest {
     function setUpStrategy() public returns (IStrategy) {
         // we save the strategy as a IStrategyInterface to give it the needed interface
         IStrategy _strategy = IStrategy(
-            address(new MockStrategy(address(asset)))
+            address(new MockTokenizedStrategy(address(asset)))
         );
 
         // set keeper
