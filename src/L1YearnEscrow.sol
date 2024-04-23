@@ -4,7 +4,11 @@ pragma solidity ^0.8.20;
 import {IVault} from "@yearn-vaults/interfaces/IVault.sol";
 import {L1Escrow, SafeERC20, IERC20} from "@zkevm-stb/L1Escrow.sol";
 
-// ADD buffer
+/**
+ * @title L1YearnEscrow
+ * @author yearn.fi
+ * @dev L1 escrow that will deploy the assets to a Yearn vault to earn yield.
+ */
 contract L1YearnEscrow is L1Escrow {
     // ****************************
     // *         Libraries        *
@@ -139,6 +143,8 @@ contract L1YearnEscrow is L1Escrow {
         address destinationAddress,
         uint256 amount
     ) internal virtual override whenNotPaused {
+        VaultStorage storage $ = _getVaultStorage();
+
         // Check if there is enough loose balance.
         uint256 underlyingBalance = originTokenAddress().balanceOf(
             address(this)
@@ -147,7 +153,10 @@ contract L1YearnEscrow is L1Escrow {
             if (underlyingBalance >= amount) {
                 super._transferTokens(destinationAddress, amount);
                 return;
-            } else {
+            }
+
+            uint256 maxWithdraw = $.vaultAddress.maxWithdraw(address(this));
+            if (maxWithdraw < amount) {
                 super._transferTokens(destinationAddress, underlyingBalance);
                 unchecked {
                     amount = amount - underlyingBalance;
@@ -156,7 +165,6 @@ contract L1YearnEscrow is L1Escrow {
         }
 
         // Withdraw from vault to receiver.
-        VaultStorage storage $ = _getVaultStorage();
         $.vaultAddress.withdraw(amount, destinationAddress, address(this));
     }
 

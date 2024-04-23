@@ -10,6 +10,10 @@ import {IPolygonZkEVMBridge} from "./interfaces/Polygon/IPolygonZkEVMBridge.sol"
  * @notice To be inherited by the L1 and L2 Deployer's for common functionality.
  */
 abstract contract DeployerBase {
+    /*//////////////////////////////////////////////////////////////
+                           POSITION ID'S
+    //////////////////////////////////////////////////////////////*/
+
     bytes32 public constant ESCROW_IMPLEMENTATION =
         keccak256("Escrow Implementation");
     bytes32 public constant L1_DEPLOYER = keccak256("L1 Deployer");

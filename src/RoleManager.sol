@@ -624,7 +624,7 @@ contract RoleManager {
      * @return The default vault for the specified `_asset`.
      */
     function getVault(address _asset) public view virtual returns (address) {
-        return _assetToVault[_asset][DEFAULT_ID];
+        return getVault(_asset, DEFAULT_ID);
     }
 
     /**

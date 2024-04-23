@@ -52,7 +52,7 @@ contract L1Deployer is DeployerBase, RoleManager {
     }
 
     /*//////////////////////////////////////////////////////////////
-                           POSITION ID'S
+                            IMMUTABLE'S
     //////////////////////////////////////////////////////////////*/
 
     IPolygonRollupManager public immutable rollupManager;
@@ -152,7 +152,7 @@ contract L1Deployer is DeployerBase, RoleManager {
 
         // If not, deploy one and do full setup
         if (_vault == address(0)) {
-            _vault = _deployDefaultVault(_asset);
+            _vault = _deployNewVault(DEFAULT_ID, _asset);
         }
 
         // Deploy L1 Escrow.
@@ -163,36 +163,7 @@ contract L1Deployer is DeployerBase, RoleManager {
         uint32 _rollupID,
         address _asset
     ) external virtual onlyRollupAdmin(_rollupID) returns (address _vault) {
-        string memory _rollupIDString = Strings.toString(_rollupID);
-
-        // Name is "{SYMBOL}-STB-{rollupID} yVault"
-        string memory _name = string(
-            abi.encodePacked(
-                ERC20(_asset).symbol(),
-                "-STB-",
-                _rollupIDString,
-                " yVault"
-            )
-        );
-        // Symbol is "stb{SYMBOL}-{rollupID}".
-        string memory _symbol = string(
-            abi.encodePacked(
-                "stb",
-                ERC20(_asset).symbol(),
-                "-",
-                _rollupIDString
-            )
-        );
-
-        _vault = _newVault(
-            _asset,
-            _name,
-            _symbol,
-            _rollupID,
-            2 ** 256 - 1,
-            defaultProfitMaxUnlock
-        );
-
+        _vault = _deployNewVault(_rollupID, _asset);
         // Custom Roles???
         _newCustomAsset(_rollupID, _asset, _vault);
     }
@@ -224,16 +195,22 @@ contract L1Deployer is DeployerBase, RoleManager {
                            VAULT CREATION
     //////////////////////////////////////////////////////////////*/
 
-    function _deployDefaultVault(
+    function _deployNewVault(
+        uint32 _rollupID,
         address _asset
     ) internal virtual returns (address) {
+        // Append the rollup ID for the name and symbol of custom vaults.
+        string memory _id = _rollupID == DEFAULT_ID
+            ? ""
+            : Strings.toString(_rollupID);
+
         // Name is "{SYMBOL}-STB yVault"
         string memory _name = string(
-            abi.encodePacked(ERC20(_asset).symbol(), "-STB yVault")
+            abi.encodePacked(ERC20(_asset).symbol(), "-STB", _id, " yVault")
         );
         // Symbol is "stb{SYMBOL}".
         string memory _symbol = string(
-            abi.encodePacked("stb", ERC20(_asset).symbol())
+            abi.encodePacked("stb", ERC20(_asset).symbol(), _id)
         );
 
         return
@@ -241,7 +218,7 @@ contract L1Deployer is DeployerBase, RoleManager {
                 _asset,
                 _name,
                 _symbol,
-                DEFAULT_ID,
+                _rollupID,
                 2 ** 256 - 1,
                 defaultProfitMaxUnlock
             );
@@ -268,6 +245,8 @@ contract L1Deployer is DeployerBase, RoleManager {
             )
         );
 
+        address expectedL1Escrow = getL1EscrowAddress(_asset);
+
         _l1Escrow = _create3Deploy(
             keccak256(abi.encodePacked(bytes("L1Escrow:"), _asset)),
             getPositionHolder(ESCROW_IMPLEMENTATION),
@@ -275,7 +254,7 @@ contract L1Deployer is DeployerBase, RoleManager {
         );
 
         // Make sure we got the right address.
-        require(_l1Escrow == getL1EscrowAddress(_asset), "wrong address");
+        require(_l1Escrow == expectedL1Escrow, "wrong address");
 
         // Set the mapping
         _chainConfig.escrows[_asset] = _l1Escrow;
