@@ -17,6 +17,8 @@ import {DebtAllocator, DebtAllocatorFactory} from "@vault-periphery/debtAllocato
 
 import {ICREATE3Factory} from "../../src/interfaces/ICREATE3Factory.sol";
 
+import {IPolygonZkEVMBridge} from "../../src/interfaces/Polygon/IPolygonZkEVMBridge.sol";
+
 import {IAccountant} from "../../src/interfaces/Yearn/IAccountant.sol";
 import {IAccountantFactory} from "../../src/interfaces/Yearn/IAccountantFactory.sol";
 
@@ -24,6 +26,7 @@ import {L1Deployer} from "../../src/L1Deployer.sol";
 import {L2Deployer} from "../../src/L2Deployer.sol";
 import {L1YearnEscrow} from "../../src/L1YearnEscrow.sol";
 
+import {Proxy} from "@zkevm-stb/Proxy.sol";
 import {L2Escrow} from "@zkevm-stb/L2Escrow.sol";
 import {L2Token} from "@zkevm-stb/L2Token.sol";
 import {L2TokenConverter} from "@zkevm-stb/L2TokenConverter.sol";
@@ -35,9 +38,9 @@ contract Setup is ExtendedTest {
 
     // Contract instances that we will use repeatedly.
     ERC20 public asset;
-    IStrategy public mockStrategy;
 
-    address public polygonZkEVMBridge = 0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe;
+    IPolygonZkEVMBridge public polygonZkEVMBridge =
+        IPolygonZkEVMBridge(0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe);
 
     address public rollupManager = 0x5132A183E9F3CB7C848b0AAC5Ae0c4f0491B7aB2;
 
@@ -47,17 +50,20 @@ contract Setup is ExtendedTest {
     // Vault contracts to test with.
     IVault public vault;
     // Vault Factory v3.0.2
-    IVaultFactory public vaultFactory = IVaultFactory(0x444045c5C13C246e117eD36437303cac8E250aB0);
+    IVaultFactory public vaultFactory =
+        IVaultFactory(0x444045c5C13C246e117eD36437303cac8E250aB0);
 
     /// Periphery Contracts \\\
 
     Registry public registry;
-    RegistryFactory public registryFactory = RegistryFactory(0x8648FF16ed48FAD456BF0e0e2190AeA8710BdC81);
+    RegistryFactory public registryFactory =
+        RegistryFactory(0x8648FF16ed48FAD456BF0e0e2190AeA8710BdC81);
 
     DebtAllocatorFactory public allocatorFactory;
 
     IAccountant public accountant;
-    IAccountantFactory public accountantFactory = IAccountantFactory(0xF728f839796a399ACc2823c1e5591F05a31c32d1);
+    IAccountantFactory public accountantFactory =
+        IAccountantFactory(0xF728f839796a399ACc2823c1e5591F05a31c32d1);
 
     /// Core Contracts \\\\
 
@@ -87,7 +93,7 @@ contract Setup is ExtendedTest {
     address public emergencyAdmin = address(6);
     address public l2RiskManager = address(48);
     address public l2EscrowManager = address(67);
-    
+
     mapping(string => address) public tokenAddrs;
 
     // Integer variables that will be used repeatedly.
@@ -96,11 +102,14 @@ contract Setup is ExtendedTest {
     uint256 public WAD = 1e18;
 
     // Fuzz amount
-    uint256 public maxFuzzAmount = 1e12;
-    uint256 public minFuzzAmount = MAX_BPS;
+    uint256 public maxFuzzAmount = 1e30;
+    uint256 public minFuzzAmount = 1e4;
 
     // Default profit max unlock time is set for 10 days
     uint256 public profitMaxUnlockTime = 10 days;
+
+    uint32 public l1RollupID = 0;
+    uint32 public l2RollupID = 1;
 
     function setUp() public virtual {
         _setTokenAddrs();
@@ -111,19 +120,23 @@ contract Setup is ExtendedTest {
         );
 
         // Deploy new Debt Allocator Factory.
-        allocatorFactory = DebtAllocatorFactory(new DebtAllocatorFactory(governator));
+        allocatorFactory = DebtAllocatorFactory(
+            new DebtAllocatorFactory(governator)
+        );
 
         // Deploy new Accountant
-        accountant = IAccountant(accountantFactory.newAccountant(
-            governator, // governance
-            feeRecipient, // Fee recipient
-            0, // Management Fee
-            1_000,  // Perf Fee
-            0, // Refund Ratio
-            10_000, // Max Fee
-            20_000, // Max Gain
-            0 // Max Loss
-        ));
+        accountant = IAccountant(
+            accountantFactory.newAccountant(
+                governator, // governance
+                feeRecipient, // Fee recipient
+                0, // Management Fee
+                1_000, // Perf Fee
+                0, // Refund Ratio
+                10_000, // Max Fee
+                20_000, // Max Gain
+                0 // Max Loss
+            )
+        );
 
         l1EscrowImpl = new L1YearnEscrow();
 
@@ -150,7 +163,7 @@ contract Setup is ExtendedTest {
             address(l1Deployer),
             l2RiskManager,
             l2EscrowManager,
-            polygonZkEVMBridge,
+            address(polygonZkEVMBridge),
             address(l2TokenImpl),
             address(l2EscrowImpl),
             address(l2TokenConverterImpl)
@@ -158,9 +171,15 @@ contract Setup is ExtendedTest {
 
         vm.startPrank(governator);
         registry.setEndorser(address(l1Deployer), true);
-        l1Deployer.setPositionHolder(l1Deployer.ACCOUNTANT(), address(accountant));
+        l1Deployer.setPositionHolder(
+            l1Deployer.ACCOUNTANT(),
+            address(accountant)
+        );
         accountant.setVaultManager(address(l1Deployer));
-        l1Deployer.setPositionHolder(l1Deployer.L2_DEPLOYER(), address(l2Deployer));
+        l1Deployer.setPositionHolder(
+            l1Deployer.L2_DEPLOYER(),
+            address(l2Deployer)
+        );
         vm.stopPrank();
 
         // Make sure everything works with USDT
@@ -175,7 +194,7 @@ contract Setup is ExtendedTest {
         vm.label(keeper, "keeper");
         vm.label(address(asset), "asset");
         vm.label(management, "management");
-        vm.label(address(mockStrategy), "strategy");
+        vm.label(address(vault), "vault");
         vm.label(address(vaultFactory), " vault factory");
         vm.label(feeRecipient, "feeRecipient");
         vm.label(address(registry), "Registry");
@@ -188,6 +207,28 @@ contract Setup is ExtendedTest {
         vm.label(address(l2TokenImpl), "L2 Token Impl");
         vm.label(address(l2TokenConverterImpl), "L2 Convertor IMPL");
         vm.label(address(create3Factory), "Create 3 Factory");
+    }
+
+    function deployMockVault() public returns (IVault _newVault) {
+        // Skip 1 to always get a unique name each time
+        skip(1);
+        _newVault = IVault(
+            vaultFactory.deploy_new_vault(
+                address(asset),
+                string.concat(
+                    "Mock Vault",
+                    string(abi.encode(block.timestamp))
+                ),
+                "yvMock",
+                governator,
+                10 days
+            )
+        );
+
+        vm.startPrank(governator);
+        _newVault.set_role(governator, Roles.ALL);
+        _newVault.set_deposit_limit(2 ** 256 - 1);
+        vm.stopPrank();
     }
 
     function setUpStrategy() public returns (IStrategy) {
@@ -209,25 +250,25 @@ contract Setup is ExtendedTest {
         return _strategy;
     }
 
-    function depositIntoStrategy(
-        IStrategy _strategy,
+    function bridgeAsset(
+        L1YearnEscrow _escrow,
         address _user,
         uint256 _amount
     ) public {
         vm.startPrank(_user);
-        asset.approve(address(_strategy), _amount);
+        asset.approve(address(_escrow), _amount);
 
-        _strategy.deposit(_amount, _user);
+        _escrow.bridgeToken(_user, _amount, true);
         vm.stopPrank();
     }
 
-    function mintAndDepositIntoStrategy(
-        IStrategy _strategy,
+    function mintAndBridge(
+        L1YearnEscrow _escrow,
         address _user,
         uint256 _amount
     ) public {
         airdrop(asset, _user, _amount);
-        depositIntoStrategy(_strategy, _user, _amount);
+        bridgeAsset(_escrow, _user, _amount);
     }
 
     function addStrategyToVault(IVault _vault, IStrategy _strategy) public {
@@ -253,31 +294,10 @@ contract Setup is ExtendedTest {
     function addStrategyAndDebt(
         IVault _vault,
         IStrategy _strategy,
-        address _user,
         uint256 _amount
     ) public {
         addStrategyToVault(_vault, _strategy);
-        mintAndDepositIntoStrategy(IStrategy(address(_vault)), _user, _amount);
         addDebtToStrategy(_vault, _strategy, _amount);
-    }
-
-    // For checking the amounts in the strategy
-    function checkStrategyTotals(
-        IStrategy _strategy,
-        uint256 _totalAssets,
-        uint256 _totalDebt,
-        uint256 _totalIdle
-    ) public view {
-        uint256 _assets = _strategy.totalAssets();
-        uint256 _balance = ERC20(_strategy.asset()).balanceOf(
-            address(_strategy)
-        );
-        uint256 _idle = _balance > _assets ? _assets : _balance;
-        uint256 _debt = _assets - _idle;
-        assertEq(_assets, _totalAssets, "!totalAssets");
-        assertEq(_debt, _totalDebt, "!totalDebt");
-        assertEq(_idle, _totalIdle, "!totalIdle");
-        assertEq(_totalAssets, _totalDebt + _totalIdle, "!Added");
     }
 
     function airdrop(ERC20 _asset, address _to, uint256 _amount) public {
@@ -285,18 +305,62 @@ contract Setup is ExtendedTest {
         deal(address(_asset), _to, balanceBefore + _amount);
     }
 
-    function setFees(uint16 _protocolFee, uint16 _performanceFee) public {
-        address gov = vaultFactory.governance();
+    function getL2TokenAddress(
+        address _l1TokenAddress
+    ) public view virtual returns (address) {
+        return
+            create3Factory.getDeployed(
+                address(l2Deployer),
+                keccak256(abi.encodePacked(bytes("L2Token:"), _l1TokenAddress))
+            );
+    }
 
-        // Need to make sure there is a protocol fee recipient to set the fee.
-        vm.prank(gov);
-        vaultFactory.set_protocol_fee_recipient(gov);
+    function getL1EscrowAddress(
+        address _l1TokenAddress
+    ) public view virtual returns (address) {
+        return
+            create3Factory.getDeployed(
+                address(l1Deployer),
+                keccak256(abi.encodePacked(bytes("L1Escrow:"), _l1TokenAddress))
+            );
+    }
 
-        vm.prank(gov);
-        vaultFactory.set_protocol_fee_bps(_protocolFee);
+    function getL2EscrowAddress(
+        address _l1TokenAddress
+    ) public view virtual returns (address) {
+        return
+            create3Factory.getDeployed(
+                address(l2Deployer),
+                keccak256(abi.encodePacked(bytes("L2Escrow:"), _l1TokenAddress))
+            );
+    }
 
-        vm.prank(management);
-        mockStrategy.setPerformanceFee(_performanceFee);
+    function getL2ConvertorAddress(
+        address _l1TokenAddress
+    ) public view virtual returns (address) {
+        return
+            create3Factory.getDeployed(
+                address(l2Deployer),
+                keccak256(
+                    abi.encodePacked(
+                        bytes("L2TokenConverter:"),
+                        _l1TokenAddress
+                    )
+                )
+            );
+    }
+
+    function _create3Deploy(
+        bytes32 _salt,
+        address _implementation,
+        bytes memory _initData
+    ) internal returns (address) {
+        bytes memory _creationCode = abi.encodePacked(
+            type(Proxy).creationCode,
+            abi.encode(_implementation, _initData)
+        );
+
+        return create3Factory.deploy(_salt, _creationCode);
     }
 
     function _setTokenAddrs() internal {

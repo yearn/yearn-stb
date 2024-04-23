@@ -1,11 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.20;
 
-import {L1Escrow} from "@zkevm-stb/L1Escrow.sol";
 import {IVault} from "@yearn-vaults/interfaces/IVault.sol";
+import {L1Escrow, SafeERC20, IERC20} from "@zkevm-stb/L1Escrow.sol";
 
-// ADD buffer
+/**
+ * @title L1YearnEscrow
+ * @author yearn.fi
+ * @dev L1 escrow that will deploy the assets to a Yearn vault to earn yield.
+ */
 contract L1YearnEscrow is L1Escrow {
+    // ****************************
+    // *         Libraries        *
+    // ****************************
+
+    using SafeERC20 for IERC20;
+
     // ****************************
     // *         Events         *
     // **************************
@@ -87,7 +97,9 @@ contract L1YearnEscrow is L1Escrow {
         );
 
         VaultStorage storage $ = _getVaultStorage();
-        // Set the vault variables
+        // Max approve the vault
+        originTokenAddress().forceApprove(_vaultAddress, 2 ** 256 - 1);
+        // Set the vault variable
         $.vaultAddress = IVault(_vaultAddress);
     }
 
@@ -131,8 +143,9 @@ contract L1YearnEscrow is L1Escrow {
         address destinationAddress,
         uint256 amount
     ) internal virtual override whenNotPaused {
-        // Withdraw from vault to receiver.
         VaultStorage storage $ = _getVaultStorage();
+
+        // Check if there is enough loose balance.
         uint256 underlyingBalance = originTokenAddress().balanceOf(
             address(this)
         );
@@ -140,7 +153,10 @@ contract L1YearnEscrow is L1Escrow {
             if (underlyingBalance >= amount) {
                 super._transferTokens(destinationAddress, amount);
                 return;
-            } else {
+            }
+
+            uint256 maxWithdraw = $.vaultAddress.maxWithdraw(address(this));
+            if (maxWithdraw < amount) {
                 super._transferTokens(destinationAddress, underlyingBalance);
                 unchecked {
                     amount = amount - underlyingBalance;
@@ -148,6 +164,7 @@ contract L1YearnEscrow is L1Escrow {
             }
         }
 
+        // Withdraw from vault to receiver.
         $.vaultAddress.withdraw(amount, destinationAddress, address(this));
     }
 
@@ -186,12 +203,28 @@ contract L1YearnEscrow is L1Escrow {
         IVault oldVault = $.vaultAddress;
         // If re-initializing to a new vault address.
         if (address(oldVault) != address(0)) {
+            // Lower allowance to 0
+            originTokenAddress().forceApprove(address(oldVault), 0);
+
             uint256 balance = oldVault.balanceOf(address(this));
             // Withdraw the full balance of the current vault.
             if (balance != 0) {
                 oldVault.redeem(balance, address(this), address(this));
             }
         }
+
+        // Migrate to new vault if applicable
+        if (_vaultAddress != address(0)) {
+            // Max approve the new vault
+            originTokenAddress().forceApprove(_vaultAddress, 2 ** 256 - 1);
+
+            // Deposit any loose funds
+            uint256 balance = originTokenAddress().balanceOf(address(this));
+            if (balance != 0)
+                IVault(_vaultAddress).deposit(balance, address(this));
+        }
+
+        // Update Storage
         $.vaultAddress = IVault(_vaultAddress);
 
         emit UpdateVaultAddress(_vaultAddress);

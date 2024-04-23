@@ -118,4 +118,6 @@ interface IPolygonZkEVMBridge {
     function networkID() external returns (uint32);
 
     function polygonRollupManager() external view returns (address);
+
+    function depositCount() external view returns (uint256);
 }

@@ -4,17 +4,16 @@ pragma solidity >=0.8.18;
 import {BaseStrategy, ERC20} from "./BaseStrategy.sol";
 
 contract MockTokenizedStrategy is BaseStrategy {
-
     constructor(
         address _asset,
         string memory _name
-    ) BaseStrategy(_asset, _name){}
+    ) BaseStrategy(_asset, _name) {}
 
-    function _deployFunds(uint256 _amount) internal override virtual {}
+    function _deployFunds(uint256 _amount) internal virtual override {}
 
-    function _freeFunds(uint256 _amount) internal override virtual {}
+    function _freeFunds(uint256 _amount) internal virtual override {}
 
-    function _harvestAndReport() internal override virtual returns (uint256) {
+    function _harvestAndReport() internal virtual override returns (uint256) {
         return asset.balanceOf(address(this));
     }
 }
@@ -26,7 +25,7 @@ contract MockTokenized is MockTokenizedStrategy {
     constructor(
         address _asset,
         string memory _name
-    ) MockTokenizedStrategy(_asset, _name){}
+    ) MockTokenizedStrategy(_asset, _name) {}
 
     function realizeLoss(uint256 _amount) external {
         asset.transfer(msg.sender, _amount);

@@ -1,22 +1,23 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity >=0.8.18;
 
-import {Setup, console} from "./utils/Setup.sol";
-import {Roles} from "@yearn-vaults/interfaces/Roles.sol";
+import {Setup, console, Roles} from "./utils/Setup.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract SetupTest is Setup {
-
-    uint256 public managementRoles = Roles.REPORTING_MANAGER |
-                    Roles.DEBT_MANAGER |
-                    Roles.QUEUE_MANAGER |
-                    Roles.DEPOSIT_LIMIT_MANAGER |
-                    Roles.DEBT_PURCHASER |
-                    Roles.PROFIT_UNLOCK_MANAGER;
+    uint256 public managementRoles =
+        Roles.REPORTING_MANAGER |
+            Roles.DEBT_MANAGER |
+            Roles.QUEUE_MANAGER |
+            Roles.DEPOSIT_LIMIT_MANAGER |
+            Roles.DEBT_PURCHASER |
+            Roles.PROFIT_UNLOCK_MANAGER;
 
     uint256 public keeperRoles = Roles.REPORTING_MANAGER;
-    uint256 public debtAllocatorRoles = Roles.REPORTING_MANAGER | Roles.DEBT_MANAGER;
+    uint256 public debtAllocatorRoles =
+        Roles.REPORTING_MANAGER | Roles.DEBT_MANAGER;
 
-    function setUp() public virtual override{
+    function setUp() public virtual override {
         super.setUp();
     }
 
@@ -66,7 +67,10 @@ contract SetupTest is Setup {
         assertEq(l2Deployer.getRiskManager(), l2RiskManager);
         assertEq(l2Deployer.getEscrowManager(), l2EscrowManager);
         assertEq(l2Deployer.getTokenImplementation(), address(l2TokenImpl));
-        assertEq(l2Deployer.getConvertorImplementation(), address(l2TokenConverterImpl));
+        assertEq(
+            l2Deployer.getConvertorImplementation(),
+            address(l2TokenConverterImpl)
+        );
     }
 
     function test_newVault() public {
@@ -76,12 +80,12 @@ contract SetupTest is Setup {
         address manager = address(123);
 
         vm.expectRevert("!admin");
-        l1Deployer.registerRollup(rollupID, manager); 
+        l1Deployer.registerRollup(rollupID, manager);
 
         vm.prank(admin);
         l1Deployer.registerRollup(rollupID, manager);
 
-        l1Deployer.newAsset(rollupID, address(asset));
+        l1Deployer.newEscrow(rollupID, address(asset));
     }
 
     function test_newToken() public {
@@ -93,10 +97,15 @@ contract SetupTest is Setup {
         l1Deployer.registerRollup(rollupID, manager);
 
         address _l1Escrow;
-        ( , _l1Escrow) =  l1Deployer.newAsset(rollupID, address(asset));
-        bytes memory data = abi.encode(address(asset), _l1Escrow, asset.name(), bytes(asset.symbol()));
+        (_l1Escrow, ) = l1Deployer.newEscrow(rollupID, address(asset));
+        bytes memory data = abi.encode(
+            address(asset),
+            _l1Escrow,
+            asset.name(),
+            bytes(asset.symbol())
+        );
 
-        vm.prank(polygonZkEVMBridge);
+        vm.prank(address(polygonZkEVMBridge));
         l2Deployer.onMessageReceived(address(l1Deployer), 0, data);
     }
 }
