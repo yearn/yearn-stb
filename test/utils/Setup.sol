@@ -149,6 +149,7 @@ contract Setup is ExtendedTest {
             address(registry),
             address(allocatorFactory),
             address(polygonZkEVMBridge),
+            address(0),
             address(l1EscrowImpl)
         );
 
@@ -189,24 +190,25 @@ contract Setup is ExtendedTest {
         decimals = asset.decimals();
 
         // label all the used addresses for traces
-        vm.label(governator, "governator");
+
         vm.label(czar, "czar");
         vm.label(keeper, "keeper");
+        vm.label(address(vault), "vault");
         vm.label(address(asset), "asset");
         vm.label(management, "management");
-        vm.label(address(vault), "vault");
-        vm.label(address(vaultFactory), " vault factory");
+        vm.label(governator, "governator");
         vm.label(feeRecipient, "feeRecipient");
         vm.label(address(registry), "Registry");
         vm.label(address(accountant), "Accountant");
-        vm.label(address(allocatorFactory), "Allocator Factory");
         vm.label(address(l1Deployer), "L1 Deployer");
-        vm.label(address(l1EscrowImpl), "L1 escrow IMPL");
         vm.label(address(l2Deployer), "L2 Deployer");
-        vm.label(address(l2EscrowImpl), "L2 Escrow IMPL");
         vm.label(address(l2TokenImpl), "L2 Token Impl");
-        vm.label(address(l2TokenConverterImpl), "L2 Convertor IMPL");
+        vm.label(address(l2EscrowImpl), "L2 Escrow IMPL");
+        vm.label(address(l1EscrowImpl), "L1 escrow IMPL");
+        vm.label(address(vaultFactory), " vault factory");
         vm.label(address(create3Factory), "Create 3 Factory");
+        vm.label(address(allocatorFactory), "Allocator Factory");
+        vm.label(address(l2TokenConverterImpl), "L2 Convertor IMPL");
     }
 
     function deployMockVault() public returns (IVault _newVault) {

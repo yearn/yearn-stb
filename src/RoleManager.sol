@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.20;
 
+import {DeployerBase} from "./DeployerBase.sol";
 import {Roles} from "@yearn-vaults/interfaces/Roles.sol";
 import {IVault} from "@yearn-vaults/interfaces/IVault.sol";
 import {IAccountant} from "./interfaces/Yearn/IAccountant.sol";
@@ -10,7 +11,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {DebtAllocatorFactory} from "@vault-periphery/debtAllocators/DebtAllocatorFactory.sol";
 
 /// @title PolyYearn Stake the Bridge Role Manager.
-contract RoleManager {
+contract RoleManager is DeployerBase {
     /// @notice Revert message for when a contract has already been deployed.
     error AlreadyDeployed(address _contract);
 
@@ -27,26 +28,11 @@ contract RoleManager {
         address indexed debtAllocator
     );
 
-    /// @notice Emitted when a new address is set for a position.
-    event UpdatePositionHolder(
-        bytes32 indexed position,
-        address indexed newAddress
-    );
-
     /// @notice Emitted when a vault is removed.
     event RemovedVault(address indexed vault);
 
-    /// @notice Emitted when a new set of roles is set for a position
-    event UpdatePositionRoles(bytes32 indexed position, uint256 newRoles);
-
     /// @notice Emitted when the defaultProfitMaxUnlock variable is updated.
     event UpdateDefaultProfitMaxUnlock(uint256 newDefaultProfitMaxUnlock);
-
-    /// @notice Position struct
-    struct Position {
-        address holder;
-        uint96 roles;
-    }
 
     /// @notice Config that holds all vault info.
     struct VaultConfig {
@@ -55,20 +41,6 @@ contract RoleManager {
         address debtAllocator;
         uint256 index;
     }
-
-    /// @notice Only allow position holder to call.
-    modifier onlyPositionHolder(bytes32 _positionId) {
-        _isPositionHolder(_positionId);
-        _;
-    }
-
-    /// @notice Check if the msg sender is specified position holder.
-    function _isPositionHolder(bytes32 _positionId) internal view virtual {
-        require(msg.sender == getPositionHolder(_positionId), "!allowed");
-    }
-
-    /// @notice Rollup ID to use for the default vaults.
-    uint32 internal constant DEFAULT_ID = 0;
 
     /*//////////////////////////////////////////////////////////////
                            POSITION ID'S
@@ -111,9 +83,6 @@ contract RoleManager {
     /// @notice Default time until profits are fully unlocked for new vaults.
     uint256 public defaultProfitMaxUnlock = 10 days;
 
-    /// @notice Mapping of position ID to position information.
-    mapping(bytes32 => Position) internal _positions;
-
     /// @notice Mapping of vault addresses to its config.
     mapping(address => VaultConfig) public vaultConfig;
 
@@ -128,49 +97,55 @@ contract RoleManager {
         address _emergencyAdmin,
         address _keeper,
         address _registry,
-        address _allocatorFactory
-    ) {
+        address _allocatorFactory,
+        address _polygonZkEVMBridge,
+        address _l2Deployer,
+        address _escrowImplementation
+    )
+        DeployerBase(
+            _polygonZkEVMBridge,
+            address(this),
+            _l2Deployer,
+            _escrowImplementation
+        )
+    {
         chad = _czar;
 
         // Governator gets no roles.
-        _positions[GOVERNATOR].holder = _governator;
+        _setPositionHolder(GOVERNATOR, _governator);
 
         // Czar gets all of the Roles.
-        _positions[CZAR] = Position({holder: _czar, roles: uint96(Roles.ALL)});
+        _setPositionHolder(CZAR, _czar);
+        _setPositionRoles(CZAR, Roles.ALL);
 
-        // Set up the initial role configs for each position.
-        _positions[MANAGEMENT] = Position({
-            holder: _management,
-            roles: uint96(
-                Roles.REPORTING_MANAGER |
-                    Roles.DEBT_MANAGER |
-                    Roles.QUEUE_MANAGER |
-                    Roles.DEPOSIT_LIMIT_MANAGER |
-                    Roles.DEBT_PURCHASER |
-                    Roles.PROFIT_UNLOCK_MANAGER
-            )
-        });
+        // Management reports, can update debt, queue, deposit limits and unlock time.
+        _setPositionHolder(MANAGEMENT, _management);
+        _setPositionRoles(
+            MANAGEMENT,
+            Roles.REPORTING_MANAGER |
+                Roles.DEBT_MANAGER |
+                Roles.QUEUE_MANAGER |
+                Roles.DEPOSIT_LIMIT_MANAGER |
+                Roles.DEBT_PURCHASER |
+                Roles.PROFIT_UNLOCK_MANAGER
+        );
 
         // Emergency Admin can set the max debt for strategies to have.
-        _positions[EMERGENCY_ADMIN] = Position({
-            holder: _emergencyAdmin,
-            roles: uint96(Roles.EMERGENCY_MANAGER)
-        });
+        _setPositionHolder(EMERGENCY_ADMIN, _emergencyAdmin);
+        _setPositionRoles(EMERGENCY_ADMIN, Roles.EMERGENCY_MANAGER);
 
         // The keeper can process reports.
-        _positions[KEEPER] = Position({
-            holder: _keeper,
-            roles: uint96(Roles.REPORTING_MANAGER)
-        });
+        _setPositionHolder(KEEPER, _keeper);
+        _setPositionRoles(KEEPER, Roles.REPORTING_MANAGER);
 
         // Debt allocators manage debt and also need to process reports.
-        _positions[DEBT_ALLOCATOR].roles = uint96(
+        _setPositionRoles(
+            DEBT_ALLOCATOR,
             Roles.REPORTING_MANAGER | Roles.DEBT_MANAGER
         );
 
-        // Set the registry
-        _positions[REGISTRY].holder = _registry;
-        _positions[ALLOCATOR_FACTORY].holder = _allocatorFactory;
+        _setPositionHolder(REGISTRY, _registry);
+        _setPositionHolder(ALLOCATOR_FACTORY, _allocatorFactory);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -188,9 +163,10 @@ contract RoleManager {
         address _asset
     ) internal virtual returns (address _vault) {
         // Append the rollup ID for the name and symbol of custom vaults.
-        string memory _id = _rollupID == DEFAULT_ID
+        string memory _id = _rollupID == ORIGIN_NETWORK_ID
             ? ""
             : string(abi.encodePacked("-", Strings.toString(_rollupID)));
+
         // Name is "{SYMBOL}-STB yVault"
         string memory _name = string(
             abi.encodePacked(ERC20(_asset).symbol(), "-STB", _id, " yVault")
@@ -556,9 +532,7 @@ contract RoleManager {
             _position != DEBT_ALLOCATOR && _position != KEEPER,
             "cannot update"
         );
-        _positions[_position].roles = uint96(_newRoles);
-
-        emit UpdatePositionRoles(_position, _newRoles);
+        _setPositionRoles(_position, _newRoles);
     }
 
     /**
@@ -571,9 +545,7 @@ contract RoleManager {
         address _newHolder
     ) external virtual onlyPositionHolder(GOVERNATOR) {
         require(_position != GOVERNATOR, "!two step flow");
-        _positions[_position].holder = _newHolder;
-
-        emit UpdatePositionHolder(_position, _newHolder);
+        _setPositionHolder(_position, _newHolder);
     }
 
     /**
@@ -598,12 +570,9 @@ contract RoleManager {
         onlyPositionHolder(PENDING_GOVERNATOR)
     {
         // Set the Governator role to the caller.
-        _positions[GOVERNATOR].holder = msg.sender;
-        emit UpdatePositionHolder(GOVERNATOR, msg.sender);
-
+        _setPositionHolder(GOVERNATOR, msg.sender);
         // Reset the Pending Governator.
-        _positions[PENDING_GOVERNATOR].holder = address(0);
-        emit UpdatePositionHolder(PENDING_GOVERNATOR, address(0));
+        _setPositionHolder(PENDING_GOVERNATOR, address(0));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -626,13 +595,13 @@ contract RoleManager {
     }
 
     /**
-     * @notice Get the default vault for a specific asset and chain ID.
+     * @notice Get the default vault for a specific asset.
      * @dev This will return address(0) if one has not been added or deployed.
      * @param _asset The underlying asset used.
      * @return The default vault for the specified `_asset`.
      */
     function getVault(address _asset) public view virtual returns (address) {
-        return getVault(_asset, DEFAULT_ID);
+        return getVault(_asset, ORIGIN_NETWORK_ID);
     }
 
     /**
@@ -677,160 +646,5 @@ contract RoleManager {
         address _vault
     ) external view virtual returns (address) {
         return vaultConfig[_vault].debtAllocator;
-    }
-
-    /**
-     * @notice Get the address and roles given to a specific position.
-     * @param _positionId The position identifier.
-     * @return The address that holds that position.
-     * @return The roles given to the specified position.
-     */
-    function getPosition(
-        bytes32 _positionId
-    ) public view virtual returns (address, uint256) {
-        Position memory _position = _positions[_positionId];
-        return (_position.holder, uint256(_position.roles));
-    }
-
-    /**
-     * @notice Get the current address assigned to a specific position.
-     * @param _positionId The position identifier.
-     * @return The current address assigned to the specified position.
-     */
-    function getPositionHolder(
-        bytes32 _positionId
-    ) public view virtual returns (address) {
-        return _positions[_positionId].holder;
-    }
-
-    /**
-     * @notice Get the current roles given to a specific position ID.
-     * @param _positionId The position identifier.
-     * @return The current roles given to the specified position ID.
-     */
-    function getPositionRoles(
-        bytes32 _positionId
-    ) public view virtual returns (uint256) {
-        return uint256(_positions[_positionId].roles);
-    }
-
-    /**
-     * @notice Get the address assigned to the Czar.
-     * @return The address assigned to the Czar.
-     */
-    function getCzar() external view virtual returns (address) {
-        return getPositionHolder(CZAR);
-    }
-
-    /**
-     * @notice Get the address assigned to the Governator.
-     * @return The address assigned to the Governator.
-     */
-    function getGovernator() external view virtual returns (address) {
-        return getPositionHolder(GOVERNATOR);
-    }
-
-    /**
-     * @notice Get the address assigned to the Pending Governator.
-     * @return The address assigned to the Pending Governator.
-     */
-    function getPendingGovernator() external view virtual returns (address) {
-        return getPositionHolder(PENDING_GOVERNATOR);
-    }
-
-    /**
-     * @notice Get the address assigned to Management.
-     * @return The address assigned to Management.
-     */
-    function getManagement() external view virtual returns (address) {
-        return getPositionHolder(MANAGEMENT);
-    }
-
-    /**
-     * @notice Get the address assigned to the Emergency Admin position.
-     * @return The address assigned to the Emergency Admin position.
-     */
-    function getEmergencyAdmin() external view virtual returns (address) {
-        return getPositionHolder(EMERGENCY_ADMIN);
-    }
-
-    /**
-     * @notice Get the address assigned to the Keeper position.
-     * @return The address assigned to the Keeper position.
-     */
-    function getKeeper() external view virtual returns (address) {
-        return getPositionHolder(KEEPER);
-    }
-
-    /**
-     * @notice Get the address assigned to the accountant.
-     * @return The address assigned to the accountant.
-     */
-    function getAccountant() external view virtual returns (address) {
-        return getPositionHolder(ACCOUNTANT);
-    }
-
-    /**
-     * @notice Get the address assigned to the Registry.
-     * @return The address assigned to the Registry.
-     */
-    function getRegistry() external view virtual returns (address) {
-        return getPositionHolder(REGISTRY);
-    }
-
-    /**
-     * @notice Get the address assigned to be the debt allocator if any.
-     * @return The address assigned to be the debt allocator if any.
-     */
-    function getDebtAllocator() external view virtual returns (address) {
-        return getPositionHolder(DEBT_ALLOCATOR);
-    }
-
-    /**
-     * @notice Get the address assigned to the allocator factory.
-     * @return The address assigned to the allocator factory.
-     */
-    function getAllocatorFactory() external view virtual returns (address) {
-        return getPositionHolder(ALLOCATOR_FACTORY);
-    }
-
-    /**
-     * @notice Get the roles given to the Czar position.
-     * @return The roles given to the Czar position.
-     */
-    function getCzarRoles() external view virtual returns (uint256) {
-        return getPositionRoles(CZAR);
-    }
-
-    /**
-     * @notice Get the roles given to the Management position.
-     * @return The roles given to the Management position.
-     */
-    function getManagementRoles() external view virtual returns (uint256) {
-        return getPositionRoles(MANAGEMENT);
-    }
-
-    /**
-     * @notice Get the roles given to the Emergency Admin position.
-     * @return The roles given to the Emergency Admin position.
-     */
-    function getEmergencyAdminRoles() external view virtual returns (uint256) {
-        return getPositionRoles(EMERGENCY_ADMIN);
-    }
-
-    /**
-     * @notice Get the roles given to the Keeper position.
-     * @return The roles given to the Keeper position.
-     */
-    function getKeeperRoles() external view virtual returns (uint256) {
-        return getPositionRoles(KEEPER);
-    }
-
-    /**
-     * @notice Get the roles given to the debt allocators.
-     * @return The roles given to the debt allocators.
-     */
-    function getDebtAllocatorRoles() external view virtual returns (uint256) {
-        return getPositionRoles(DEBT_ALLOCATOR);
     }
 }

@@ -24,25 +24,6 @@ contract L2Deployer is DeployerBase {
         address l2Convertor;
     }
 
-    /// @notice Emitted when a new address is set for a position.
-    event UpdatePositionHolder(
-        bytes32 indexed position,
-        address indexed newAddress
-    );
-
-    /// @notice Only allow position holder to call.
-    modifier onlyPositionHolder(bytes32 _positionId) {
-        _isPositionHolder(_positionId);
-        _;
-    }
-
-    /// @notice Check if the msg sender is specified position holder.
-    function _isPositionHolder(bytes32 _positionId) internal view virtual {
-        require(msg.sender == getPositionHolder(_positionId), "!allowed");
-    }
-
-    uint32 internal constant ORIGIN_NETWORK_ID = 0;
-
     /// @notice Position ID's for all used positions
     bytes32 public constant L2_ADMIN = keccak256("L2 Admin");
     bytes32 public constant RISK_MANAGER = keccak256("Risk Manager");
@@ -53,8 +34,8 @@ contract L2Deployer is DeployerBase {
     bytes32 public constant CONVERTOR_IMPLEMENTATION =
         keccak256("Convertor Implementation");
 
-    /// @notice Mapping of position ID to holder.
-    mapping(bytes32 => address) internal _positions;
+    // Array of all L1 tokens that have a bridged version.
+    address[] public bridgedAssets;
 
     // L1 Address => struct
     mapping(address => TokenInfo) public tokenInfo;
@@ -68,13 +49,18 @@ contract L2Deployer is DeployerBase {
         address _tokenImplementation,
         address _escrowImplementation,
         address _convertorImplementation
-    ) DeployerBase(_polygonZkEVMBridge) {
+    )
+        DeployerBase(
+            _polygonZkEVMBridge,
+            _l1Deployer,
+            address(this),
+            _escrowImplementation
+        )
+    {
         _setPositionHolder(L2_ADMIN, _l2Admin);
-        _setPositionHolder(L1_DEPLOYER, _l1Deployer);
         _setPositionHolder(RISK_MANAGER, _riskManager);
         _setPositionHolder(ESCROW_MANAGER, _escrowManager);
         _setPositionHolder(TOKEN_IMPLEMENTATION, _tokenImplementation);
-        _setPositionHolder(ESCROW_IMPLEMENTATION, _escrowImplementation);
         _setPositionHolder(CONVERTOR_IMPLEMENTATION, _convertorImplementation);
     }
 
@@ -156,6 +142,7 @@ contract L2Deployer is DeployerBase {
             l2Escrow: _l2Escrow,
             l2Convertor: _l2Convertor
         });
+        bridgedAssets.push(_l1Token);
 
         emit NewToken(_l1Token, _l2Token, _l2Escrow, _l2Convertor);
     }
@@ -257,73 +244,12 @@ contract L2Deployer is DeployerBase {
         _setPositionHolder(PENDING_ADMIN, address(0));
     }
 
-    /**
-     * @notice Setter function for updating a positions holder.
-     */
-    function _setPositionHolder(
-        bytes32 _position,
-        address _newHolder
-    ) internal virtual {
-        _positions[_position] = _newHolder;
-
-        emit UpdatePositionHolder(_position, _newHolder);
-    }
-
-    /**
-     * @notice Get the current address assigned to a specific position.
-     * @param _positionId The position identifier.
-     * @return The current address assigned to the specified position.
-     */
-    function getPositionHolder(
-        bytes32 _positionId
-    ) public view virtual returns (address) {
-        return _positions[_positionId];
-    }
-
-    function getL1Deployer() public view virtual override returns (address) {
-        return getPositionHolder(L1_DEPLOYER);
-    }
-
-    function getL2Deployer() public view virtual override returns (address) {
-        return address(this);
-    }
-
-    function getEscrowImplementation()
+    function getAllBridgedAssets()
         external
         view
         virtual
-        override
-        returns (address)
+        returns (address[] memory)
     {
-        return getPositionHolder(ESCROW_IMPLEMENTATION);
-    }
-
-    function getL2Admin() external view virtual returns (address) {
-        return getPositionHolder(L2_ADMIN);
-    }
-
-    function getRiskManager() external view virtual returns (address) {
-        return getPositionHolder(RISK_MANAGER);
-    }
-
-    function getPendingAdmin() external view virtual returns (address) {
-        return getPositionHolder(PENDING_ADMIN);
-    }
-
-    function getEscrowManager() external view virtual returns (address) {
-        return getPositionHolder(ESCROW_MANAGER);
-    }
-
-    function getTokenImplementation() external view virtual returns (address) {
-        return getPositionHolder(TOKEN_IMPLEMENTATION);
-    }
-
-    function getConvertorImplementation()
-        external
-        view
-        virtual
-        returns (address)
-    {
-        return getPositionHolder(CONVERTOR_IMPLEMENTATION);
+        return bridgedAssets;
     }
 }

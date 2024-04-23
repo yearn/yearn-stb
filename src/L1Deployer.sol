@@ -3,7 +3,6 @@ pragma solidity ^0.8.20;
 
 import {Proxy} from "@zkevm-stb/Proxy.sol";
 import {RoleManager} from "./RoleManager.sol";
-import {DeployerBase} from "./DeployerBase.sol";
 import {L1YearnEscrow} from "./L1YearnEscrow.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IPolygonRollupManager, IPolygonRollupContract} from "./interfaces/Polygon/IPolygonRollupManager.sol";
@@ -19,7 +18,7 @@ import {IPolygonRollupManager, IPolygonRollupContract} from "./interfaces/Polygo
 // 3. Management/SMS Day to Day Ops
 
 /// @title PolyYearn Stake the Bridge Role Manager.
-contract L1Deployer is DeployerBase, RoleManager {
+contract L1Deployer is RoleManager {
     event RegisteredNewRollup(
         uint32 indexed rollupID,
         address indexed rollupContract,
@@ -72,9 +71,9 @@ contract L1Deployer is DeployerBase, RoleManager {
         address _registry,
         address _allocatorFactory,
         address _polygonZkEVMBridge,
+        address _l2Deployer,
         address _escrowImplementation
     )
-        DeployerBase(_polygonZkEVMBridge)
         RoleManager(
             _governator,
             _czar,
@@ -82,13 +81,15 @@ contract L1Deployer is DeployerBase, RoleManager {
             _emergencyAdmin,
             _keeper,
             _registry,
-            _allocatorFactory
+            _allocatorFactory,
+            _polygonZkEVMBridge,
+            _l2Deployer,
+            _escrowImplementation
         )
     {
         rollupManager = IPolygonRollupManager(
             polygonZkEVMBridge.polygonRollupManager()
         );
-        _positions[ESCROW_IMPLEMENTATION].holder = _escrowImplementation;
     }
 
     function registerRollup(
@@ -151,7 +152,7 @@ contract L1Deployer is DeployerBase, RoleManager {
 
         // If not, deploy one and do full setup
         if (_vault == address(0)) {
-            _vault = _newVault(DEFAULT_ID, _asset);
+            _vault = _newVault(ORIGIN_NETWORK_ID, _asset);
         }
 
         // Deploy L1 Escrow.
@@ -257,23 +258,5 @@ contract L1Deployer is DeployerBase, RoleManager {
         address _asset
     ) public view virtual returns (address) {
         return chainConfig[_rollupID].escrows[_asset];
-    }
-
-    function getL1Deployer() public view virtual override returns (address) {
-        return address(this);
-    }
-
-    function getL2Deployer() public view virtual override returns (address) {
-        return getPositionHolder(L2_DEPLOYER);
-    }
-
-    function getEscrowImplementation()
-        external
-        view
-        virtual
-        override
-        returns (address)
-    {
-        return getPositionHolder(ESCROW_IMPLEMENTATION);
     }
 }
