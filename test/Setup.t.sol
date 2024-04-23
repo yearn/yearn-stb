@@ -2,6 +2,7 @@
 pragma solidity >=0.8.18;
 
 import {Setup, console, Roles} from "./utils/Setup.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract SetupTest is Setup {
     uint256 public managementRoles =
@@ -84,7 +85,7 @@ contract SetupTest is Setup {
         vm.prank(admin);
         l1Deployer.registerRollup(rollupID, manager);
 
-        l1Deployer.newAsset(rollupID, address(asset));
+        l1Deployer.newEscrow(rollupID, address(asset));
     }
 
     function test_newToken() public {
@@ -96,7 +97,7 @@ contract SetupTest is Setup {
         l1Deployer.registerRollup(rollupID, manager);
 
         address _l1Escrow;
-        (, _l1Escrow) = l1Deployer.newAsset(rollupID, address(asset));
+        (_l1Escrow, ) = l1Deployer.newEscrow(rollupID, address(asset));
         bytes memory data = abi.encode(
             address(asset),
             _l1Escrow,

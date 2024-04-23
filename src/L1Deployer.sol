@@ -5,7 +5,6 @@ import {Proxy} from "@zkevm-stb/Proxy.sol";
 import {RoleManager} from "./RoleManager.sol";
 import {DeployerBase} from "./DeployerBase.sol";
 import {L1YearnEscrow} from "./L1YearnEscrow.sol";
-import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IPolygonRollupManager, IPolygonRollupContract} from "./interfaces/Polygon/IPolygonRollupManager.sol";
 
@@ -133,10 +132,10 @@ contract L1Deployer is DeployerBase, RoleManager {
                            ESCROW CREATION
     //////////////////////////////////////////////////////////////*/
 
-    function newAsset(
+    function newEscrow(
         uint32 _rollupID,
         address _asset
-    ) external virtual returns (address _vault, address _l1Escrow) {
+    ) external virtual returns (address _l1Escrow, address _vault) {
         // Verify the rollup Id is valid.
         require(
             address(chainConfig[_rollupID].rollupContract) != address(0),
@@ -152,32 +151,31 @@ contract L1Deployer is DeployerBase, RoleManager {
 
         // If not, deploy one and do full setup
         if (_vault == address(0)) {
-            _vault = _deployNewVault(DEFAULT_ID, _asset);
+            _vault = _newVault(DEFAULT_ID, _asset);
         }
 
         // Deploy L1 Escrow.
         _l1Escrow = _deployL1Escrow(_rollupID, _asset, _vault);
     }
 
-    function newCustomAsset(
+    function newCustomVault(
         uint32 _rollupID,
         address _asset
     ) external virtual onlyRollupAdmin(_rollupID) returns (address _vault) {
-        _vault = _deployNewVault(_rollupID, _asset);
-        // Custom Roles???
-        _newCustomAsset(_rollupID, _asset, _vault);
+        _vault = _newVault(_rollupID, _asset);
+        _newCustomVault(_rollupID, _asset, _vault);
     }
 
-    function newCustomAsset(
+    function newCustomVault(
         uint32 _rollupID,
         address _asset,
         address _vault
     ) external virtual onlyRollupAdmin(_rollupID) {
         _addNewVault(_rollupID, _vault);
-        _newCustomAsset(_rollupID, _asset, _vault);
+        _newCustomVault(_rollupID, _asset, _vault);
     }
 
-    function _newCustomAsset(
+    function _newCustomVault(
         uint32 _rollupID,
         address _asset,
         address _vault
@@ -192,37 +190,8 @@ contract L1Deployer is DeployerBase, RoleManager {
     }
 
     /*//////////////////////////////////////////////////////////////
-                           VAULT CREATION
+                        ESCROW CREATION
     //////////////////////////////////////////////////////////////*/
-
-    function _deployNewVault(
-        uint32 _rollupID,
-        address _asset
-    ) internal virtual returns (address) {
-        // Append the rollup ID for the name and symbol of custom vaults.
-        string memory _id = _rollupID == DEFAULT_ID
-            ? ""
-            : Strings.toString(_rollupID);
-
-        // Name is "{SYMBOL}-STB yVault"
-        string memory _name = string(
-            abi.encodePacked(ERC20(_asset).symbol(), "-STB", _id, " yVault")
-        );
-        // Symbol is "stb{SYMBOL}".
-        string memory _symbol = string(
-            abi.encodePacked("stb", ERC20(_asset).symbol(), _id)
-        );
-
-        return
-            _newVault(
-                _asset,
-                _name,
-                _symbol,
-                _rollupID,
-                2 ** 256 - 1,
-                defaultProfitMaxUnlock
-            );
-    }
 
     function _deployL1Escrow(
         uint32 _rollupID,

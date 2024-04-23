@@ -5,6 +5,7 @@ import {Roles} from "@yearn-vaults/interfaces/Roles.sol";
 import {IVault} from "@yearn-vaults/interfaces/IVault.sol";
 import {IAccountant} from "./interfaces/Yearn/IAccountant.sol";
 import {Registry} from "@vault-periphery/registry/Registry.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {DebtAllocatorFactory} from "@vault-periphery/debtAllocators/DebtAllocatorFactory.sol";
 
@@ -178,26 +179,34 @@ contract RoleManager {
 
     /**
      * @notice Creates a new endorsed vault.
+     * @param _rollupID Id of the rollup to deploy for.
      * @param _asset Address of the underlying asset.
-     * @param _depositLimit The deposit limit to start the vault with.
-     * @param _profitMaxUnlockTime Time until profits are fully unlocked.
      * @return _vault Address of the newly created vault.
      */
     function _newVault(
-        address _asset,
-        string memory _name,
-        string memory _symbol,
         uint32 _rollupID,
-        uint256 _depositLimit,
-        uint256 _profitMaxUnlockTime
+        address _asset
     ) internal virtual returns (address _vault) {
+        // Append the rollup ID for the name and symbol of custom vaults.
+        string memory _id = _rollupID == DEFAULT_ID
+            ? ""
+            : string(abi.encodePacked("-", Strings.toString(_rollupID)));
+        // Name is "{SYMBOL}-STB yVault"
+        string memory _name = string(
+            abi.encodePacked(ERC20(_asset).symbol(), "-STB", _id, " yVault")
+        );
+        // Symbol is "stb{SYMBOL}".
+        string memory _symbol = string(
+            abi.encodePacked("stb", ERC20(_asset).symbol(), _id)
+        );
+
         // Deploy through the registry so it is automatically endorsed.
         _vault = Registry(getPositionHolder(REGISTRY)).newEndorsedVault(
             _asset,
             _name,
             _symbol,
             address(this),
-            _profitMaxUnlockTime
+            defaultProfitMaxUnlock
         );
 
         // Deploy a new debt allocator for the vault.
@@ -209,9 +218,8 @@ contract RoleManager {
         // Set up the accountant.
         _setAccountant(_vault);
 
-        if (_depositLimit != 0) {
-            _setDepositLimit(_vault, _depositLimit);
-        }
+        // Set deposit limit to max uint.
+        _setDepositLimit(_vault, 2 ** 256 - 1);
 
         // Add the vault config to the mapping.
         vaultConfig[_vault] = VaultConfig({
