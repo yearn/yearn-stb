@@ -34,7 +34,7 @@ contract L1Deployer is RoleManager {
     /// @notice Check if the msg sender is governance or the specified position holder.
     function _isRollupAdmin(uint32 _rollupID) internal view virtual {
         require(
-            msg.sender == chainConfig[_rollupID].rollupContract.admin(),
+            msg.sender == _chainConfig[_rollupID].rollupContract.admin(),
             "!admin"
         );
     }
@@ -50,7 +50,7 @@ contract L1Deployer is RoleManager {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Mapping of chain ID to the rollup config.
-    mapping(uint32 => ChainConfig) public chainConfig;
+    mapping(uint32 => ChainConfig) internal _chainConfig;
 
     constructor(
         address _governator,
@@ -86,21 +86,30 @@ contract L1Deployer is RoleManager {
         uint32 _rollupID,
         address _l1Manager
     ) external virtual {
-        ChainConfig storage _chainConfig = chainConfig[_rollupID];
-        require(
-            address(_chainConfig.rollupContract) == address(0),
-            "registered"
-        );
-        require(_l1Manager != address(0), "ZERO ADDRESS");
+        require(getRollupContract(_rollupID) == address(0), "registered");
+        _registerRollup(_rollupID, _l1Manager);
+    }
+
+    function _registerRollup(
+        uint32 _rollupID,
+        address _l1Manager
+    ) internal virtual {
+        ChainConfig storage chainConfig_ = _chainConfig[_rollupID];
 
         IPolygonRollupContract _rollupContract = rollupManager
             .rollupIDToRollupData(_rollupID)
             .rollupContract;
-        // Checks the rollup ID is valid and the caller is the rollup Admin.
-        require(msg.sender == _rollupContract.admin(), "!admin");
 
-        _chainConfig.rollupContract = _rollupContract;
-        _chainConfig.manager = _l1Manager;
+        // Checks the rollup ID is valid
+        address admin = _rollupContract.admin();
+        // If the caller is not the rollup Admin.
+        if (msg.sender != _rollupContract.admin()) {
+            // Default the manager to be the admin
+            _l1Manager = admin;
+        }
+
+        chainConfig_.rollupContract = _rollupContract;
+        chainConfig_.manager = _l1Manager;
 
         emit RegisteredNewRollup(
             _rollupID,
@@ -114,7 +123,7 @@ contract L1Deployer is RoleManager {
         address _l1Manager
     ) external virtual onlyRollupAdmin(_rollupID) {
         require(_l1Manager != address(0), "ZERO ADDRESS");
-        chainConfig[_rollupID].manager = _l1Manager;
+        _chainConfig[_rollupID].manager = _l1Manager;
 
         emit UpdateRollupManager(_rollupID, _l1Manager);
     }
@@ -127,11 +136,10 @@ contract L1Deployer is RoleManager {
         uint32 _rollupID,
         address _asset
     ) external virtual returns (address _l1Escrow, address _vault) {
-        // Verify the rollup Id is valid.
-        require(
-            address(chainConfig[_rollupID].rollupContract) != address(0),
-            "rollup not registered"
-        );
+        // Register rollup if not already done. Verifies its a valid rollup ID.
+        if (getRollupContract(_rollupID) == address(0)) {
+            _registerRollup(_rollupID, address(0));
+        }
 
         // Verify that the vault is not already set for that chain.
         _l1Escrow = getEscrow(_rollupID, _asset);
@@ -152,28 +160,33 @@ contract L1Deployer is RoleManager {
     function newCustomVault(
         uint32 _rollupID,
         address _asset
-    ) external virtual onlyRollupAdmin(_rollupID) returns (address _vault) {
+    )
+        external
+        virtual
+        onlyRollupAdmin(_rollupID)
+        returns (address _l1Escrow, address _vault)
+    {
         _vault = _newVault(_rollupID, _asset);
-        _newCustomVault(_rollupID, _asset, _vault);
+        _l1Escrow = _newCustomVault(_rollupID, _asset, _vault);
     }
 
     function newCustomVault(
         uint32 _rollupID,
         address _asset,
         address _vault
-    ) external virtual onlyRollupAdmin(_rollupID) {
+    ) external virtual onlyRollupAdmin(_rollupID) returns (address _l1Escrow) {
         if (!isVaultsRoleManager(_vault)) {
             _addNewVault(_rollupID, _vault);
         }
-        _newCustomVault(_rollupID, _asset, _vault);
+        _l1Escrow = _newCustomVault(_rollupID, _asset, _vault);
     }
 
     function _newCustomVault(
         uint32 _rollupID,
         address _asset,
         address _vault
-    ) internal virtual {
-        address _l1Escrow = getEscrow(_rollupID, _asset);
+    ) internal virtual returns (address _l1Escrow) {
+        _l1Escrow = getEscrow(_rollupID, _asset);
 
         if (_l1Escrow == address(0)) {
             _l1Escrow = _deployL1Escrow(_rollupID, _asset, _vault);
@@ -191,13 +204,13 @@ contract L1Deployer is RoleManager {
         address _asset,
         address _vault
     ) internal returns (address _l1Escrow) {
-        ChainConfig storage _chainConfig = chainConfig[_rollupID];
+        ChainConfig storage chainConfig_ = _chainConfig[_rollupID];
 
         bytes memory data = abi.encodeCall(
             L1YearnEscrow.initialize,
             (
-                _chainConfig.rollupContract.admin(),
-                _chainConfig.manager,
+                chainConfig_.rollupContract.admin(),
+                chainConfig_.manager,
                 address(polygonZkEVMBridge),
                 getL2EscrowAddress(_asset),
                 _rollupID,
@@ -219,10 +232,9 @@ contract L1Deployer is RoleManager {
         require(_l1Escrow == expectedL1Escrow, "wrong address");
 
         // Set the mapping
-        _chainConfig.escrows[_asset] = _l1Escrow;
+        chainConfig_.escrows[_asset] = _l1Escrow;
 
         // Send Message to Bridge for L2
-        // TODO: Will L2 Deployer be the same each chain?
         polygonZkEVMBridge.bridgeMessage(
             _rollupID,
             getPositionHolder(L2_DEPLOYER),
@@ -238,6 +250,14 @@ contract L1Deployer is RoleManager {
         emit NewL1Escrow(_rollupID, _l1Escrow);
     }
 
+    function getRollupContract(uint32 _rollupID) public view returns (address) {
+        return address(_chainConfig[_rollupID].rollupContract);
+    }
+
+    function getRollupManager(uint32 _rollupID) public view returns (address) {
+        return _chainConfig[_rollupID].manager;
+    }
+
     /**
      * @notice Get the L1 Escrow for a specific asset and chain ID.
      * @dev This will return address(0) if one has not been added or deployed.
@@ -249,6 +269,6 @@ contract L1Deployer is RoleManager {
         uint32 _rollupID,
         address _asset
     ) public view virtual returns (address) {
-        return chainConfig[_rollupID].escrows[_asset];
+        return _chainConfig[_rollupID].escrows[_asset];
     }
 }
