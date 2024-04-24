@@ -80,7 +80,7 @@ contract EscrowTest is Setup {
 
     function test_bridgeAsset(uint256 _amount) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
-
+        address counterPart = getL2EscrowAddress(address(asset));
         mockEscrow = deployMockL1Escrow();
 
         // Simulate a bridge txn
@@ -97,7 +97,7 @@ contract EscrowTest is Setup {
             l1RollupID,
             address(mockEscrow),
             l2RollupID,
-            address(l2EscrowImpl),
+            counterPart,
             0,
             data,
             uint32(depositCount)
@@ -118,7 +118,7 @@ contract EscrowTest is Setup {
         vm.expectRevert(
             "TokenWrapped::PolygonBridgeBase: Not PolygonZkEVMBridge"
         );
-        mockEscrow.onMessageReceived(address(l2EscrowImpl), l2RollupID, data);
+        mockEscrow.onMessageReceived(counterPart, l2RollupID, data);
 
         vm.expectRevert(
             "TokenWrapped::PolygonBridgeBase: Not counterpart contract"
@@ -130,10 +130,10 @@ contract EscrowTest is Setup {
             "TokenWrapped::PolygonBridgeBase: Not counterpart network"
         );
         vm.prank(address(polygonZkEVMBridge));
-        mockEscrow.onMessageReceived(address(l2EscrowImpl), l1RollupID, data);
+        mockEscrow.onMessageReceived(counterPart, l1RollupID, data);
 
         vm.prank(address(polygonZkEVMBridge));
-        mockEscrow.onMessageReceived(address(l2EscrowImpl), l2RollupID, data);
+        mockEscrow.onMessageReceived(counterPart, l2RollupID, data);
 
         assertEq(vault.totalAssets(), _amount - toWithdraw);
         assertEq(asset.balanceOf(user), toWithdraw);
@@ -143,7 +143,7 @@ contract EscrowTest is Setup {
         data = abi.encode(user, _amount - toWithdraw);
 
         vm.prank(address(polygonZkEVMBridge));
-        mockEscrow.onMessageReceived(address(l2EscrowImpl), l2RollupID, data);
+        mockEscrow.onMessageReceived(counterPart, l2RollupID, data);
 
         assertEq(vault.totalAssets(), 0);
         assertEq(asset.balanceOf(user), _amount);
@@ -157,6 +157,7 @@ contract EscrowTest is Setup {
     ) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
         _minimumBuffer = bound(_minimumBuffer, 10, maxFuzzAmount);
+        address counterPart = getL2EscrowAddress(address(asset));
 
         mockEscrow = deployMockL1Escrow();
 
@@ -182,7 +183,7 @@ contract EscrowTest is Setup {
         // Withdraw everything
         bytes memory data = abi.encode(user, _amount);
         vm.prank(address(polygonZkEVMBridge));
-        mockEscrow.onMessageReceived(address(l2EscrowImpl), l2RollupID, data);
+        mockEscrow.onMessageReceived(counterPart, l2RollupID, data);
 
         assertEq(vault.totalAssets(), 0);
         assertEq(asset.balanceOf(user), _amount);
@@ -192,6 +193,7 @@ contract EscrowTest is Setup {
 
     function test_bridgeAsset_updateVault(uint256 _amount) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
+        address counterPart = getL2EscrowAddress(address(asset));
 
         mockEscrow = deployMockL1Escrow();
 
@@ -236,7 +238,7 @@ contract EscrowTest is Setup {
         // Withdraw everything
         bytes memory data = abi.encode(user, _amount * 2);
         vm.prank(address(polygonZkEVMBridge));
-        mockEscrow.onMessageReceived(address(l2EscrowImpl), l2RollupID, data);
+        mockEscrow.onMessageReceived(counterPart, l2RollupID, data);
 
         assertEq(newVault.totalAssets(), 0);
         assertEq(asset.balanceOf(user), _amount * 2);
@@ -246,6 +248,7 @@ contract EscrowTest is Setup {
 
     function test_managerWithdraw(uint256 _amount) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
+        address counterPart = getL2EscrowAddress(address(asset));
 
         mockEscrow = deployMockL1Escrow();
 
@@ -280,10 +283,97 @@ contract EscrowTest is Setup {
         // Withdraw everything
         bytes memory data = abi.encode(user, _amount);
         vm.prank(address(polygonZkEVMBridge));
-        mockEscrow.onMessageReceived(address(l2EscrowImpl), l2RollupID, data);
+        mockEscrow.onMessageReceived(counterPart, l2RollupID, data);
 
         assertEq(vault.totalAssets(), 0);
         assertEq(asset.balanceOf(user), _amount);
+        assertEq(asset.balanceOf(address(mockEscrow)), 0);
+        assertEq(vault.balanceOf(address(mockEscrow)), 0);
+    }
+
+    function test_illiquidWithdraw(uint256 _amount) public {
+        _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
+        address counterPart = getL2EscrowAddress(address(asset));
+
+        mockEscrow = deployMockL1Escrow();
+
+        // Simulate a bridge txn
+        mintAndBridge(mockEscrow, user, _amount);
+
+        assertEq(vault.totalAssets(), _amount);
+        assertEq(asset.balanceOf(user), 0);
+        assertEq(asset.balanceOf(address(mockEscrow)), 0);
+        assertEq(vault.balanceOf(address(mockEscrow)), _amount);
+
+        // send funds to a strategy
+        uint256 toLock = _amount / 2;
+        addStrategyAndDebt(vault, setUpStrategy(), toLock);
+        // And remove from queue
+        address[] memory queue = new address[](0);
+        vm.prank(governator);
+        vault.set_default_queue(queue);
+
+        assertEq(vault.maxWithdraw(address(mockEscrow)), _amount - toLock);
+
+        // Withdraw everything
+        bytes memory data = abi.encode(user, _amount);
+        vm.prank(address(polygonZkEVMBridge));
+        mockEscrow.onMessageReceived(counterPart, l2RollupID, data);
+
+        // Should have sent the liquid balance and the rest in shares
+        assertEq(vault.totalAssets(), toLock);
+        assertEq(asset.balanceOf(user), _amount - toLock);
+        assertEq(vault.balanceOf(user), toLock);
+        assertEq(asset.balanceOf(address(mockEscrow)), 0);
+        assertEq(vault.balanceOf(address(mockEscrow)), 0);
+    }
+
+    function test_illiquidWithdraw_withBuffer(
+        uint256 _amount,
+        uint256 _minimumBuffer
+    ) public {
+        _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
+        _minimumBuffer = bound(_minimumBuffer, 10, _amount / 2);
+        address counterPart = getL2EscrowAddress(address(asset));
+
+        mockEscrow = deployMockL1Escrow();
+
+        vm.prank(governator);
+        mockEscrow.updateMinimumBuffer(_minimumBuffer);
+
+        // Simulate a bridge txn
+        mintAndBridge(mockEscrow, user, _amount);
+
+        assertEq(vault.totalAssets(), _amount - _minimumBuffer);
+        assertEq(asset.balanceOf(user), 0);
+        assertEq(asset.balanceOf(address(mockEscrow)), _minimumBuffer);
+        assertEq(
+            vault.balanceOf(address(mockEscrow)),
+            _amount - _minimumBuffer
+        );
+
+        // send funds to a strategy
+        uint256 toLock = _amount / 2;
+        addStrategyAndDebt(vault, setUpStrategy(), toLock);
+        // And remove from queue
+        address[] memory queue = new address[](0);
+        vm.prank(governator);
+        vault.set_default_queue(queue);
+
+        assertEq(
+            vault.maxWithdraw(address(mockEscrow)),
+            _amount - _minimumBuffer - toLock
+        );
+
+        // Withdraw everything
+        bytes memory data = abi.encode(user, _amount);
+        vm.prank(address(polygonZkEVMBridge));
+        mockEscrow.onMessageReceived(counterPart, l2RollupID, data);
+
+        // Should have sent the liquid balance and the rest in shares
+        assertEq(vault.totalAssets(), toLock);
+        assertEq(asset.balanceOf(user), _amount - toLock);
+        assertEq(vault.balanceOf(user), toLock);
         assertEq(asset.balanceOf(address(mockEscrow)), 0);
         assertEq(vault.balanceOf(address(mockEscrow)), 0);
     }
@@ -298,28 +388,4 @@ contract EscrowTest is Setup {
         bytes metadata,
         uint32 depositCount
     );
-
-    function deployMockL1Escrow() internal returns (L1YearnEscrow newEscrow) {
-        bytes memory data = abi.encodeCall(
-            L1YearnEscrow.initialize,
-            (
-                governator,
-                czar,
-                address(polygonZkEVMBridge),
-                address(l2EscrowImpl),
-                l2RollupID,
-                address(asset),
-                l2TokenAddress,
-                address(vault)
-            )
-        );
-
-        newEscrow = L1YearnEscrow(
-            _create3Deploy(
-                keccak256(abi.encodePacked(bytes("L1Escrow:"), address(asset))),
-                address(l1EscrowImpl),
-                data
-            )
-        );
-    }
 }

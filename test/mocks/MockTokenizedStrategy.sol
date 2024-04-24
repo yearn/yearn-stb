@@ -5,9 +5,8 @@ import {BaseStrategy, ERC20} from "./BaseStrategy.sol";
 
 contract MockTokenizedStrategy is BaseStrategy {
     constructor(
-        address _asset,
-        string memory _name
-    ) BaseStrategy(_asset, _name) {}
+        address _asset
+    ) BaseStrategy(_asset, "Mock Tokenized Strategy") {}
 
     function _deployFunds(uint256 _amount) internal virtual override {}
 
@@ -22,10 +21,7 @@ contract MockTokenized is MockTokenizedStrategy {
     uint256 public loss;
     uint256 public limit;
 
-    constructor(
-        address _asset,
-        string memory _name
-    ) MockTokenizedStrategy(_asset, _name) {}
+    constructor(address _asset) MockTokenizedStrategy(_asset) {}
 
     function realizeLoss(uint256 _amount) external {
         asset.transfer(msg.sender, _amount);

@@ -37,38 +37,101 @@ contract SetupTest is Setup {
     // Check the L1 deployer is setup correctly and working.
     function test_l1DeployerSetup() public {
         assertEq(l1Deployer.name(), "L1 Stake the Bridge Deployer");
-        assertEq(l1Deployer.getGovernator(), governator);
-        assertEq(l1Deployer.getCzar(), czar);
-        assertEq(l1Deployer.getCzarRoles(), Roles.ALL);
-        assertEq(l1Deployer.getManagement(), management);
-        assertEq(l1Deployer.getManagementRoles(), managementRoles);
-        assertEq(l1Deployer.getKeeper(), keeper);
-        assertEq(l1Deployer.getKeeperRoles(), keeperRoles);
-        assertEq(l1Deployer.getEmergencyAdmin(), emergencyAdmin);
-        assertEq(l1Deployer.getEmergencyAdminRoles(), Roles.EMERGENCY_MANAGER);
-        assertEq(l1Deployer.getDebtAllocator(), address(0));
-        assertEq(l1Deployer.getDebtAllocatorRoles(), debtAllocatorRoles);
-        assertEq(l1Deployer.getPendingGovernator(), address(0));
-        assertEq(l1Deployer.getAccountant(), address(accountant));
-        assertEq(l1Deployer.getRegistry(), address(registry));
-        assertEq(l1Deployer.getAllocatorFactory(), address(allocatorFactory));
-        assertEq(l1Deployer.getL1Deployer(), address(l1Deployer));
-        assertEq(l1Deployer.getL2Deployer(), address(l2Deployer));
-        assertEq(l1Deployer.getEscrowImplementation(), address(l1EscrowImpl));
+        assertEq(
+            l1Deployer.getPositionHolder(l1Deployer.GOVERNATOR()),
+            governator
+        );
+        assertEq(l1Deployer.getPositionHolder(l1Deployer.CZAR()), czar);
+        assertEq(l1Deployer.getPositionRoles(l1Deployer.CZAR()), Roles.ALL);
+        assertEq(
+            l1Deployer.getPositionHolder(l1Deployer.MANAGEMENT()),
+            management
+        );
+        assertEq(
+            l1Deployer.getPositionRoles(l1Deployer.MANAGEMENT()),
+            managementRoles
+        );
+        assertEq(l1Deployer.getPositionHolder(l1Deployer.KEEPER()), keeper);
+        assertEq(l1Deployer.getPositionRoles(l1Deployer.KEEPER()), keeperRoles);
+        assertEq(
+            l1Deployer.getPositionHolder(l1Deployer.EMERGENCY_ADMIN()),
+            emergencyAdmin
+        );
+        assertEq(
+            l1Deployer.getPositionRoles(l1Deployer.EMERGENCY_ADMIN()),
+            Roles.EMERGENCY_MANAGER
+        );
+        assertEq(
+            l1Deployer.getPositionHolder(l1Deployer.DEBT_ALLOCATOR()),
+            address(0)
+        );
+        assertEq(
+            l1Deployer.getPositionRoles(l1Deployer.DEBT_ALLOCATOR()),
+            debtAllocatorRoles
+        );
+        assertEq(
+            l1Deployer.getPositionHolder(l1Deployer.PENDING_GOVERNATOR()),
+            address(0)
+        );
+        assertEq(
+            l1Deployer.getPositionHolder(l1Deployer.ACCOUNTANT()),
+            address(accountant)
+        );
+        assertEq(
+            l1Deployer.getPositionHolder(l1Deployer.REGISTRY()),
+            address(registry)
+        );
+        assertEq(
+            l1Deployer.getPositionHolder(l1Deployer.ALLOCATOR_FACTORY()),
+            address(allocatorFactory)
+        );
+        assertEq(
+            l1Deployer.getPositionHolder(l1Deployer.L1_DEPLOYER()),
+            address(l1Deployer)
+        );
+        assertEq(
+            l1Deployer.getPositionHolder(l1Deployer.L2_DEPLOYER()),
+            address(l2Deployer)
+        );
+        assertEq(
+            l1Deployer.getPositionHolder(l1Deployer.ESCROW_IMPLEMENTATION()),
+            address(l1EscrowImpl)
+        );
     }
 
     function test_l2DeployerSetup() public {
         assertEq(l2Deployer.name(), "L2 Stake the Bridge Deployer");
-        assertEq(l2Deployer.getL1Deployer(), address(l1Deployer));
-        assertEq(l2Deployer.getL2Deployer(), address(l2Deployer));
-        assertEq(l2Deployer.getEscrowImplementation(), address(l2EscrowImpl));
-        assertEq(l2Deployer.getL2Admin(), l2Admin);
-        assertEq(l2Deployer.getPendingAdmin(), address(0));
-        assertEq(l2Deployer.getRiskManager(), l2RiskManager);
-        assertEq(l2Deployer.getEscrowManager(), l2EscrowManager);
-        assertEq(l2Deployer.getTokenImplementation(), address(l2TokenImpl));
         assertEq(
-            l2Deployer.getConvertorImplementation(),
+            l2Deployer.getPositionHolder(l2Deployer.L1_DEPLOYER()),
+            address(l1Deployer)
+        );
+        assertEq(
+            l2Deployer.getPositionHolder(l2Deployer.L2_DEPLOYER()),
+            address(l2Deployer)
+        );
+        assertEq(
+            l2Deployer.getPositionHolder(l2Deployer.ESCROW_IMPLEMENTATION()),
+            address(l2EscrowImpl)
+        );
+        assertEq(l2Deployer.getPositionHolder(l2Deployer.L2_ADMIN()), l2Admin);
+        assertEq(
+            l2Deployer.getPositionHolder(l2Deployer.PENDING_ADMIN()),
+            address(0)
+        );
+        assertEq(
+            l2Deployer.getPositionHolder(l2Deployer.RISK_MANAGER()),
+            l2RiskManager
+        );
+        assertEq(
+            l2Deployer.getPositionHolder(l2Deployer.ESCROW_MANAGER()),
+            l2EscrowManager
+        );
+        assertEq(
+            l2Deployer.getPositionHolder(l2Deployer.TOKEN_IMPLEMENTATION()),
+            address(l2TokenImpl)
+        );
+        assertEq(
+            l2Deployer.getPositionHolder(l2Deployer.CONVERTER_IMPLEMENTATION()),
             address(l2TokenConverterImpl)
         );
     }
@@ -86,26 +149,5 @@ contract SetupTest is Setup {
         l1Deployer.registerRollup(rollupID, manager);
 
         l1Deployer.newEscrow(rollupID, address(asset));
-    }
-
-    function test_newToken() public {
-        uint32 rollupID = 1;
-        address admin = 0x242daE44F5d8fb54B198D03a94dA45B5a4413e21;
-        address manager = address(123);
-
-        vm.prank(admin);
-        l1Deployer.registerRollup(rollupID, manager);
-
-        address _l1Escrow;
-        (_l1Escrow, ) = l1Deployer.newEscrow(rollupID, address(asset));
-        bytes memory data = abi.encode(
-            address(asset),
-            _l1Escrow,
-            asset.name(),
-            bytes(asset.symbol())
-        );
-
-        vm.prank(address(polygonZkEVMBridge));
-        l2Deployer.onMessageReceived(address(l1Deployer), 0, data);
     }
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.20;
 
+import {Positions} from "./Positions.sol";
 import {Proxy} from "@zkevm-stb/Proxy.sol";
 import {ICREATE3Factory} from "./interfaces/ICREATE3Factory.sol";
 import {IPolygonZkEVMBridge} from "./interfaces/Polygon/IPolygonZkEVMBridge.sol";
@@ -9,48 +10,36 @@ import {IPolygonZkEVMBridge} from "./interfaces/Polygon/IPolygonZkEVMBridge.sol"
  * @title DeployerBase
  * @notice To be inherited by the L1 and L2 Deployer's for common functionality.
  */
-abstract contract DeployerBase {
-    /*//////////////////////////////////////////////////////////////
-                           POSITION ID'S
-    //////////////////////////////////////////////////////////////*/
-
-    bytes32 public constant ESCROW_IMPLEMENTATION =
-        keccak256("Escrow Implementation");
-    bytes32 public constant L1_DEPLOYER = keccak256("L1 Deployer");
-    bytes32 public constant L2_DEPLOYER = keccak256("L2 Deployer");
+contract DeployerBase is Positions {
+    uint32 internal constant ORIGIN_NETWORK_ID = 0;
 
     /// @notice Address of the ICREATE3Factory contract used for deployment
     ICREATE3Factory internal constant create3Factory =
         ICREATE3Factory(0x93FEC2C00BfE902F733B57c5a6CeeD7CD1384AE1);
 
-    /// @notice Immutable original chain ID
-    uint256 public immutable originalChainID;
+    /*//////////////////////////////////////////////////////////////
+                           POSITION ID'S
+    //////////////////////////////////////////////////////////////*/
+
+    bytes32 public constant L1_DEPLOYER = keccak256("L1 Deployer");
+    bytes32 public constant L2_DEPLOYER = keccak256("L2 Deployer");
+    bytes32 public constant ESCROW_IMPLEMENTATION =
+        keccak256("Escrow Implementation");
 
     /// @notice Address of the PolygonZkEVMBridge contract
     IPolygonZkEVMBridge public immutable polygonZkEVMBridge;
 
-    constructor(address _polygonZkEVMBridge) {
+    constructor(
+        address _polygonZkEVMBridge,
+        address _l1Deployer,
+        address _l2Deployer,
+        address _escrowImplementation
+    ) {
         polygonZkEVMBridge = IPolygonZkEVMBridge(_polygonZkEVMBridge);
-        originalChainID = block.chainid;
+        _setPositionHolder(L1_DEPLOYER, _l1Deployer);
+        _setPositionHolder(L2_DEPLOYER, _l2Deployer);
+        _setPositionHolder(ESCROW_IMPLEMENTATION, _escrowImplementation);
     }
-
-    /**
-     * @notice Abstract functions to get the Layer 1 deployer address
-     * @return Address of the Layer 1 deployer
-     */
-    function getL1Deployer() public view virtual returns (address);
-
-    /**
-     * @notice Abstract functions to get the Layer 2 deployer address
-     * @return Address of the Layer 2 deployer
-     */
-    function getL2Deployer() public view virtual returns (address);
-
-    /**
-     * @notice Abstract functions to get the Escrow Implementation address
-     * @return Address of the Escrow Implementation.
-     */
-    function getEscrowImplementation() external view virtual returns (address);
 
     /**
      * @notice Get expected L2 token address for a given asset
@@ -62,7 +51,7 @@ abstract contract DeployerBase {
     ) public view virtual returns (address) {
         return
             create3Factory.getDeployed(
-                getL2Deployer(),
+                getPositionHolder(L2_DEPLOYER),
                 keccak256(abi.encodePacked(bytes("L2Token:"), _l1TokenAddress))
             );
     }
@@ -77,7 +66,7 @@ abstract contract DeployerBase {
     ) public view virtual returns (address) {
         return
             create3Factory.getDeployed(
-                getL1Deployer(),
+                getPositionHolder(L1_DEPLOYER),
                 keccak256(abi.encodePacked(bytes("L1Escrow:"), _l1TokenAddress))
             );
     }
@@ -92,7 +81,7 @@ abstract contract DeployerBase {
     ) public view virtual returns (address) {
         return
             create3Factory.getDeployed(
-                getL2Deployer(),
+                getPositionHolder(L2_DEPLOYER),
                 keccak256(abi.encodePacked(bytes("L2Escrow:"), _l1TokenAddress))
             );
     }
@@ -102,12 +91,12 @@ abstract contract DeployerBase {
      * @param _l1TokenAddress Address of the L1 token
      * @return Address of the expected L2 converter contract
      */
-    function getL2ConvertorAddress(
+    function getL2ConverterAddress(
         address _l1TokenAddress
     ) public view virtual returns (address) {
         return
             create3Factory.getDeployed(
-                getL2Deployer(),
+                getPositionHolder(L2_DEPLOYER),
                 keccak256(
                     abi.encodePacked(
                         bytes("L2TokenConverter:"),

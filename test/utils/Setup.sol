@@ -31,7 +31,7 @@ import {L2Escrow} from "@zkevm-stb/L2Escrow.sol";
 import {L2Token} from "@zkevm-stb/L2Token.sol";
 import {L2TokenConverter} from "@zkevm-stb/L2TokenConverter.sol";
 
-import {MockStrategy} from "../mocks/MockStrategy.sol";
+import {MockTokenizedStrategy} from "../mocks/MockTokenizedStrategy.sol";
 
 contract Setup is ExtendedTest {
     using SafeERC20 for ERC20;
@@ -149,6 +149,7 @@ contract Setup is ExtendedTest {
             address(registry),
             address(allocatorFactory),
             address(polygonZkEVMBridge),
+            address(0),
             address(l1EscrowImpl)
         );
 
@@ -189,24 +190,26 @@ contract Setup is ExtendedTest {
         decimals = asset.decimals();
 
         // label all the used addresses for traces
-        vm.label(governator, "governator");
+
         vm.label(czar, "czar");
         vm.label(keeper, "keeper");
+        vm.label(address(vault), "vault");
         vm.label(address(asset), "asset");
         vm.label(management, "management");
-        vm.label(address(vault), "vault");
-        vm.label(address(vaultFactory), " vault factory");
+        vm.label(governator, "governator");
         vm.label(feeRecipient, "feeRecipient");
         vm.label(address(registry), "Registry");
         vm.label(address(accountant), "Accountant");
-        vm.label(address(allocatorFactory), "Allocator Factory");
         vm.label(address(l1Deployer), "L1 Deployer");
-        vm.label(address(l1EscrowImpl), "L1 escrow IMPL");
         vm.label(address(l2Deployer), "L2 Deployer");
-        vm.label(address(l2EscrowImpl), "L2 Escrow IMPL");
         vm.label(address(l2TokenImpl), "L2 Token Impl");
-        vm.label(address(l2TokenConverterImpl), "L2 Convertor IMPL");
+        vm.label(address(l2EscrowImpl), "L2 Escrow IMPL");
+        vm.label(address(l1EscrowImpl), "L1 escrow IMPL");
+        vm.label(address(vaultFactory), " vault factory");
         vm.label(address(create3Factory), "Create 3 Factory");
+        vm.label(address(polygonZkEVMBridge), "Polygon Bridge");
+        vm.label(address(allocatorFactory), "Allocator Factory");
+        vm.label(address(l2TokenConverterImpl), "L2 Converter IMPL");
     }
 
     function deployMockVault() public returns (IVault _newVault) {
@@ -234,7 +237,7 @@ contract Setup is ExtendedTest {
     function setUpStrategy() public returns (IStrategy) {
         // we save the strategy as a IStrategyInterface to give it the needed interface
         IStrategy _strategy = IStrategy(
-            address(new MockStrategy(address(asset)))
+            address(new MockTokenizedStrategy(address(asset)))
         );
 
         // set keeper
@@ -248,6 +251,30 @@ contract Setup is ExtendedTest {
         _strategy.acceptManagement();
 
         return _strategy;
+    }
+
+    function deployMockL1Escrow() internal returns (L1YearnEscrow newEscrow) {
+        bytes memory data = abi.encodeCall(
+            L1YearnEscrow.initialize,
+            (
+                governator,
+                czar,
+                address(polygonZkEVMBridge),
+                getL2EscrowAddress(address(asset)),
+                l2RollupID,
+                address(asset),
+                getL2TokenAddress(address(asset)),
+                address(vault)
+            )
+        );
+
+        newEscrow = L1YearnEscrow(
+            _create3Deploy(
+                keccak256(abi.encodePacked(bytes("L1Escrow:"), address(asset))),
+                address(l1EscrowImpl),
+                data
+            )
+        );
     }
 
     function bridgeAsset(
@@ -335,7 +362,7 @@ contract Setup is ExtendedTest {
             );
     }
 
-    function getL2ConvertorAddress(
+    function getL2ConverterAddress(
         address _l1TokenAddress
     ) public view virtual returns (address) {
         return
