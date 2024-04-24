@@ -10,7 +10,7 @@ import {IPolygonZkEVMBridge} from "./interfaces/Polygon/IPolygonZkEVMBridge.sol"
  * @title DeployerBase
  * @notice To be inherited by the L1 and L2 Deployer's for common functionality.
  */
-abstract contract DeployerBase is Positions {
+contract DeployerBase is Positions {
     uint32 internal constant ORIGIN_NETWORK_ID = 0;
 
     /// @notice Address of the ICREATE3Factory contract used for deployment
@@ -21,10 +21,10 @@ abstract contract DeployerBase is Positions {
                            POSITION ID'S
     //////////////////////////////////////////////////////////////*/
 
-    bytes32 public constant ESCROW_IMPLEMENTATION =
-        keccak256("Escrow Implementation");
     bytes32 public constant L1_DEPLOYER = keccak256("L1 Deployer");
     bytes32 public constant L2_DEPLOYER = keccak256("L2 Deployer");
+    bytes32 public constant ESCROW_IMPLEMENTATION =
+        keccak256("Escrow Implementation");
 
     /// @notice Address of the PolygonZkEVMBridge contract
     IPolygonZkEVMBridge public immutable polygonZkEVMBridge;

@@ -50,9 +50,9 @@ contract L1YearnEscrow is L1Escrow {
         }
     }
 
-    function vaultAddress() public view returns (IVault) {
+    function vaultAddress() public view returns (address) {
         VaultStorage storage $ = _getVaultStorage();
-        return $.vaultAddress;
+        return address($.vaultAddress);
     }
 
     function minimumBuffer() public view returns (uint256) {

@@ -632,7 +632,7 @@ contract RoleManager is DeployerBase {
      */
     function isVaultsRoleManager(
         address _vault
-    ) external view virtual returns (bool) {
+    ) public view virtual returns (bool) {
         return vaultConfig[_vault].asset != address(0);
     }
 

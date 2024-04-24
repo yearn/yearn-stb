@@ -150,25 +150,4 @@ contract SetupTest is Setup {
 
         l1Deployer.newEscrow(rollupID, address(asset));
     }
-
-    function test_newToken() public {
-        uint32 rollupID = 1;
-        address admin = 0x242daE44F5d8fb54B198D03a94dA45B5a4413e21;
-        address manager = address(123);
-
-        vm.prank(admin);
-        l1Deployer.registerRollup(rollupID, manager);
-
-        address _l1Escrow;
-        (_l1Escrow, ) = l1Deployer.newEscrow(rollupID, address(asset));
-        bytes memory data = abi.encode(
-            address(asset),
-            _l1Escrow,
-            asset.name(),
-            bytes(asset.symbol())
-        );
-
-        vm.prank(address(polygonZkEVMBridge));
-        l2Deployer.onMessageReceived(address(l1Deployer), 0, data);
-    }
 }

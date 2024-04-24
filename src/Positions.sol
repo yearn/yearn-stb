@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.20;
 
-abstract contract Positions {
+contract Positions {
     /// @notice Emitted when a new address is set for a position.
     event UpdatePositionHolder(
         bytes32 indexed position,

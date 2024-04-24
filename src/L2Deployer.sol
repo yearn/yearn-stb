@@ -24,7 +24,10 @@ contract L2Deployer is DeployerBase {
         address l2Converter;
     }
 
-    /// @notice Position ID's for all used positions
+    /*//////////////////////////////////////////////////////////////
+                           POSITION ID'S
+    //////////////////////////////////////////////////////////////*/
+
     bytes32 public constant L2_ADMIN = keccak256("L2 Admin");
     bytes32 public constant RISK_MANAGER = keccak256("Risk Manager");
     bytes32 public constant PENDING_ADMIN = keccak256("Pending Admin");
@@ -147,6 +150,15 @@ contract L2Deployer is DeployerBase {
         emit NewToken(_l1Token, _l2Token, _l2Escrow, _l2Converter);
     }
 
+    /**
+     * @dev Deploys the L2 token contract.
+     * @param _name The name of the token.
+     * @param _symbol The symbol of the token.
+     * @param _l1Token The address of the corresponding L1 token.
+     * @param _l2Escrow The address of the L2 escrow contract.
+     * @param _l2Converter The address of the L2 token converter contract.
+     * @return The address of the deployed L2 token contract.
+     */
     function _deployL2Token(
         string memory _name,
         string memory _symbol,
@@ -173,6 +185,13 @@ contract L2Deployer is DeployerBase {
             );
     }
 
+    /**
+     * @dev Deploys an L2 escrow contract.
+     * @param _l1Token The address of the corresponding L1 token.
+     * @param _l2TokenAddress The address of the corresponding L2 token.
+     * @param _l1Escrow The address of the corresponding L1 escrow contract.
+     * @return The address of the deployed L2 escrow contract.
+     */
     function _deployL2Escrow(
         address _l1Token,
         address _l2TokenAddress,
@@ -198,6 +217,12 @@ contract L2Deployer is DeployerBase {
             );
     }
 
+    /**
+     * @dev Deploys an L2 token converter contract.
+     * @param _l1Token The address of the corresponding L1 token.
+     * @param _l2Token The address of the corresponding L2 token.
+     * @return The address of the deployed L2 token converter contract.
+     */
     function _deployL2Converter(
         address _l1Token,
         address _l2Token
@@ -244,6 +269,9 @@ contract L2Deployer is DeployerBase {
         _setPositionHolder(PENDING_ADMIN, address(0));
     }
 
+    /**
+     * @notice Get the full list of all assets that have been bridged through this deployer.
+     */
     function getAllBridgedAssets()
         external
         view

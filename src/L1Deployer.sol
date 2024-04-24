@@ -162,7 +162,9 @@ contract L1Deployer is RoleManager {
         address _asset,
         address _vault
     ) external virtual onlyRollupAdmin(_rollupID) {
-        _addNewVault(_rollupID, _vault);
+        if (!isVaultsRoleManager(_vault)) {
+            _addNewVault(_rollupID, _vault);
+        }
         _newCustomVault(_rollupID, _asset, _vault);
     }
 
