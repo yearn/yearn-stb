@@ -14,14 +14,14 @@ contract L2Deployer is DeployerBase {
         address indexed l1Token,
         address indexed l2Token,
         address indexed l2Escrow,
-        address l2Convertor
+        address l2Converter
     );
 
     struct TokenInfo {
         address l2Token;
         address l1Escrow;
         address l2Escrow;
-        address l2Convertor;
+        address l2Converter;
     }
 
     /// @notice Position ID's for all used positions
@@ -31,8 +31,8 @@ contract L2Deployer is DeployerBase {
     bytes32 public constant ESCROW_MANAGER = keccak256("Escrow Manager");
     bytes32 public constant TOKEN_IMPLEMENTATION =
         keccak256("Token Implementation");
-    bytes32 public constant CONVERTOR_IMPLEMENTATION =
-        keccak256("Convertor Implementation");
+    bytes32 public constant CONVERTER_IMPLEMENTATION =
+        keccak256("Converter Implementation");
 
     // Array of all L1 tokens that have a bridged version.
     address[] public bridgedAssets;
@@ -48,7 +48,7 @@ contract L2Deployer is DeployerBase {
         address _polygonZkEVMBridge,
         address _tokenImplementation,
         address _escrowImplementation,
-        address _convertorImplementation
+        address _converterImplementation
     )
         DeployerBase(
             _polygonZkEVMBridge,
@@ -61,7 +61,7 @@ contract L2Deployer is DeployerBase {
         _setPositionHolder(RISK_MANAGER, _riskManager);
         _setPositionHolder(ESCROW_MANAGER, _escrowManager);
         _setPositionHolder(TOKEN_IMPLEMENTATION, _tokenImplementation);
-        _setPositionHolder(CONVERTOR_IMPLEMENTATION, _convertorImplementation);
+        _setPositionHolder(CONVERTER_IMPLEMENTATION, _converterImplementation);
     }
 
     /**
@@ -115,7 +115,7 @@ contract L2Deployer is DeployerBase {
         // Get addresses
         address expectedTokenAddress = getL2TokenAddress(_l1Token);
         address expectedEscrowAddress = getL2EscrowAddress(_l1Token);
-        address expectedConvertorAddress = getL2ConvertorAddress(_l1Token);
+        address expectedConverterAddress = getL2ConverterAddress(_l1Token);
 
         // Deploy Token
         address _l2Token = _deployL2Token(
@@ -123,7 +123,7 @@ contract L2Deployer is DeployerBase {
             _symbol,
             _l1Token,
             expectedEscrowAddress,
-            expectedConvertorAddress
+            expectedConverterAddress
         );
         require(_l2Token == expectedTokenAddress, "wrong address");
 
@@ -131,20 +131,20 @@ contract L2Deployer is DeployerBase {
         address _l2Escrow = _deployL2Escrow(_l1Token, _l2Token, _l1Escrow);
         require(_l2Escrow == expectedEscrowAddress, "wrong address");
 
-        // Deploy Convertor
-        address _l2Convertor = _deployL2Convertor(_l1Token, _l2Token);
-        require(_l2Convertor == expectedConvertorAddress, "wrong address");
+        // Deploy Converter
+        address _l2Converter = _deployL2Converter(_l1Token, _l2Token);
+        require(_l2Converter == expectedConverterAddress, "wrong address");
 
         // Store Data
         tokenInfo[_l1Token] = TokenInfo({
             l2Token: _l2Token,
             l1Escrow: _l1Escrow,
             l2Escrow: _l2Escrow,
-            l2Convertor: _l2Convertor
+            l2Converter: _l2Converter
         });
         bridgedAssets.push(_l1Token);
 
-        emit NewToken(_l1Token, _l2Token, _l2Escrow, _l2Convertor);
+        emit NewToken(_l1Token, _l2Token, _l2Escrow, _l2Converter);
     }
 
     function _deployL2Token(
@@ -152,14 +152,14 @@ contract L2Deployer is DeployerBase {
         string memory _symbol,
         address _l1Token,
         address _l2Escrow,
-        address _l2Convertor
+        address _l2Converter
     ) internal virtual returns (address) {
         bytes memory data = abi.encodeCall(
             L2Token.initialize,
             (
                 getPositionHolder(L2_ADMIN),
                 _l2Escrow,
-                _l2Convertor,
+                _l2Converter,
                 _name,
                 _symbol
             )
@@ -198,7 +198,7 @@ contract L2Deployer is DeployerBase {
             );
     }
 
-    function _deployL2Convertor(
+    function _deployL2Converter(
         address _l1Token,
         address _l2Token
     ) internal virtual returns (address) {
@@ -217,7 +217,7 @@ contract L2Deployer is DeployerBase {
                 keccak256(
                     abi.encodePacked(bytes("L2TokenConverter:"), _l1Token)
                 ),
-                getPositionHolder(CONVERTOR_IMPLEMENTATION),
+                getPositionHolder(CONVERTER_IMPLEMENTATION),
                 data
             );
     }

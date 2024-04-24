@@ -7,17 +7,7 @@ import {L1YearnEscrow} from "./L1YearnEscrow.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IPolygonRollupManager, IPolygonRollupContract} from "./interfaces/Polygon/IPolygonRollupManager.sol";
 
-// TODO:
-//  getters for custom position holders
-//  create 3 factory
-// External create3 Address getters
-//
-/// Governance Structure:
-// 1. GOVERNATOR Can change the Holders, Impl and addresses (Rare) 2/3 meta multisig (No Roles)
-// 2. CZAR/DADDY Sets strategies All Roles
-// 3. Management/SMS Day to Day Ops
-
-/// @title PolyYearn Stake the Bridge Role Manager.
+/// @title Polygon CDK Stake the Bridge L1 Deployer.
 contract L1Deployer is RoleManager {
     event RegisteredNewRollup(
         uint32 indexed rollupID,

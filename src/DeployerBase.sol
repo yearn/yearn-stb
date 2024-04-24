@@ -91,7 +91,7 @@ abstract contract DeployerBase is Positions {
      * @param _l1TokenAddress Address of the L1 token
      * @return Address of the expected L2 converter contract
      */
-    function getL2ConvertorAddress(
+    function getL2ConverterAddress(
         address _l1TokenAddress
     ) public view virtual returns (address) {
         return

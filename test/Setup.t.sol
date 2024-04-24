@@ -131,7 +131,7 @@ contract SetupTest is Setup {
             address(l2TokenImpl)
         );
         assertEq(
-            l2Deployer.getPositionHolder(l2Deployer.CONVERTOR_IMPLEMENTATION()),
+            l2Deployer.getPositionHolder(l2Deployer.CONVERTER_IMPLEMENTATION()),
             address(l2TokenConverterImpl)
         );
     }

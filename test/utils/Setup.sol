@@ -207,8 +207,9 @@ contract Setup is ExtendedTest {
         vm.label(address(l1EscrowImpl), "L1 escrow IMPL");
         vm.label(address(vaultFactory), " vault factory");
         vm.label(address(create3Factory), "Create 3 Factory");
+        vm.label(address(polygonZkEVMBridge), "Polygon Bridge");
         vm.label(address(allocatorFactory), "Allocator Factory");
-        vm.label(address(l2TokenConverterImpl), "L2 Convertor IMPL");
+        vm.label(address(l2TokenConverterImpl), "L2 Converter IMPL");
     }
 
     function deployMockVault() public returns (IVault _newVault) {
@@ -250,6 +251,30 @@ contract Setup is ExtendedTest {
         _strategy.acceptManagement();
 
         return _strategy;
+    }
+
+    function deployMockL1Escrow() internal returns (L1YearnEscrow newEscrow) {
+        bytes memory data = abi.encodeCall(
+            L1YearnEscrow.initialize,
+            (
+                governator,
+                czar,
+                address(polygonZkEVMBridge),
+                getL2EscrowAddress(address(asset)),
+                l2RollupID,
+                address(asset),
+                getL2TokenAddress(address(asset)),
+                address(vault)
+            )
+        );
+
+        newEscrow = L1YearnEscrow(
+            _create3Deploy(
+                keccak256(abi.encodePacked(bytes("L1Escrow:"), address(asset))),
+                address(l1EscrowImpl),
+                data
+            )
+        );
     }
 
     function bridgeAsset(
@@ -337,7 +362,7 @@ contract Setup is ExtendedTest {
             );
     }
 
-    function getL2ConvertorAddress(
+    function getL2ConverterAddress(
         address _l1TokenAddress
     ) public view virtual returns (address) {
         return
