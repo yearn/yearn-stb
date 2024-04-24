@@ -82,6 +82,39 @@ contract L1Deployer is RoleManager {
         );
     }
 
+    /*//////////////////////////////////////////////////////////////
+                           ESCROW CREATION
+    //////////////////////////////////////////////////////////////*/
+
+    function newEscrow(
+        uint32 _rollupID,
+        address _asset
+    ) external virtual returns (address _l1Escrow, address _vault) {
+        // Register rollup if not already done. Verifies its a valid rollup ID.
+        if (getRollupContract(_rollupID) == address(0)) {
+            _registerRollup(_rollupID, address(0));
+        }
+
+        // Verify that the vault is not already set for that chain.
+        _l1Escrow = getEscrow(_rollupID, _asset);
+        if (_l1Escrow != address(0)) revert AlreadyDeployed(_l1Escrow);
+
+        // Check if there is a current default vault.
+        _vault = getVault(_asset);
+
+        // If not, deploy one and do full setup
+        if (_vault == address(0)) {
+            _vault = _newVault(ORIGIN_NETWORK_ID, _asset);
+        }
+
+        // Deploy L1 Escrow.
+        _l1Escrow = _deployL1Escrow(_rollupID, _asset, _vault);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                           ROLLUP MANAGEMENT
+    //////////////////////////////////////////////////////////////*/
+
     function registerRollup(
         uint32 _rollupID,
         address _l1Manager
@@ -129,33 +162,8 @@ contract L1Deployer is RoleManager {
     }
 
     /*//////////////////////////////////////////////////////////////
-                           ESCROW CREATION
+                        CUSTOM VAULTS
     //////////////////////////////////////////////////////////////*/
-
-    function newEscrow(
-        uint32 _rollupID,
-        address _asset
-    ) external virtual returns (address _l1Escrow, address _vault) {
-        // Register rollup if not already done. Verifies its a valid rollup ID.
-        if (getRollupContract(_rollupID) == address(0)) {
-            _registerRollup(_rollupID, address(0));
-        }
-
-        // Verify that the vault is not already set for that chain.
-        _l1Escrow = getEscrow(_rollupID, _asset);
-        if (_l1Escrow != address(0)) revert AlreadyDeployed(_l1Escrow);
-
-        // Check if there is a current default vault.
-        _vault = getVault(_asset);
-
-        // If not, deploy one and do full setup
-        if (_vault == address(0)) {
-            _vault = _newVault(ORIGIN_NETWORK_ID, _asset);
-        }
-
-        // Deploy L1 Escrow.
-        _l1Escrow = _deployL1Escrow(_rollupID, _asset, _vault);
-    }
 
     function newCustomVault(
         uint32 _rollupID,
@@ -249,6 +257,10 @@ contract L1Deployer is RoleManager {
 
         emit NewL1Escrow(_rollupID, _l1Escrow);
     }
+
+    /*//////////////////////////////////////////////////////////////
+                        GETTER FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     function getRollupContract(uint32 _rollupID) public view returns (address) {
         return address(_chainConfig[_rollupID].rollupContract);

@@ -39,7 +39,7 @@ contract RoleManager is DeployerBase {
         address asset;
         uint32 rollupID; // 0 == default.
         address debtAllocator;
-        uint256 index;
+        uint96 index;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -202,7 +202,7 @@ contract RoleManager is DeployerBase {
             asset: _asset,
             rollupID: _rollupID,
             debtAllocator: _debtAllocator,
-            index: vaults.length
+            index: uint96(vaults.length)
         });
 
         // Add the vault to the mapping.
@@ -378,7 +378,7 @@ contract RoleManager is DeployerBase {
             asset: _asset,
             rollupID: _rollupID,
             debtAllocator: _debtAllocator,
-            index: vaults.length
+            index: uint96(vaults.length)
         });
 
         // Add the vault to the mapping.
