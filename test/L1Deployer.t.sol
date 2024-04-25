@@ -19,10 +19,13 @@ contract L1DeployerTest is Setup {
     event RegisteredNewRollup(
         uint32 indexed rollupID,
         address indexed rollupContract,
-        address indexed manager
+        address indexed escrowManager
     );
 
-    event UpdateRollupManager(uint32 indexed rollupID, address indexed manager);
+    event UpdateEscrowManager(
+        uint32 indexed rollupID,
+        address indexed escrowManager
+    );
 
     event NewL1Escrow(uint32 indexed rollupID, address indexed l1Escrow);
 
@@ -33,7 +36,8 @@ contract L1DeployerTest is Setup {
     function test_registerRollup_admin() public {
         uint32 rollupID = 1;
         assertEq(l1Deployer.getRollupContract(rollupID), address(0));
-        assertEq(l1Deployer.getRollupManager(rollupID), address(0));
+        assertEq(l1Deployer.getEscrowManager(rollupID), address(0));
+
         assertEq(l1Deployer.getEscrow(rollupID, address(asset)), address(0));
 
         address rollupContract = address(
@@ -54,7 +58,7 @@ contract L1DeployerTest is Setup {
         l1Deployer.registerRollup(rollupID, czar);
 
         assertEq(l1Deployer.getRollupContract(rollupID), rollupContract);
-        assertEq(l1Deployer.getRollupManager(rollupID), czar);
+        assertEq(l1Deployer.getEscrowManager(rollupID), czar);
         assertEq(l1Deployer.getEscrow(rollupID, address(asset)), address(0));
 
         vm.expectRevert();
@@ -63,22 +67,22 @@ contract L1DeployerTest is Setup {
 
         vm.expectRevert("!admin");
         vm.prank(czar);
-        l1Deployer.updateRollupManager(rollupID, governator);
+        l1Deployer.updateEscrowManager(rollupID, governator);
 
         vm.expectEmit(true, true, true, true, address(l1Deployer));
-        emit UpdateRollupManager(rollupID, governator);
+        emit UpdateEscrowManager(rollupID, governator);
         vm.prank(rollupAdmin);
-        l1Deployer.updateRollupManager(rollupID, governator);
+        l1Deployer.updateEscrowManager(rollupID, governator);
 
         assertEq(l1Deployer.getRollupContract(rollupID), rollupContract);
-        assertEq(l1Deployer.getRollupManager(rollupID), governator);
+        assertEq(l1Deployer.getEscrowManager(rollupID), governator);
         assertEq(l1Deployer.getEscrow(rollupID, address(asset)), address(0));
     }
 
     function test_registerRollup_rando() public {
         uint32 rollupID = 1;
         assertEq(l1Deployer.getRollupContract(rollupID), address(0));
-        assertEq(l1Deployer.getRollupManager(rollupID), address(0));
+        assertEq(l1Deployer.getEscrowManager(rollupID), address(0));
         assertEq(l1Deployer.getEscrow(rollupID, address(asset)), address(0));
 
         address rollupContract = address(
@@ -98,7 +102,7 @@ contract L1DeployerTest is Setup {
         l1Deployer.registerRollup(rollupID, czar);
 
         assertEq(l1Deployer.getRollupContract(rollupID), rollupContract);
-        assertEq(l1Deployer.getRollupManager(rollupID), rollupAdmin);
+        assertEq(l1Deployer.getEscrowManager(rollupID), rollupAdmin);
         assertEq(l1Deployer.getEscrow(rollupID, address(asset)), address(0));
 
         vm.expectRevert();
@@ -106,22 +110,22 @@ contract L1DeployerTest is Setup {
         l1Deployer.registerRollup(rollupID, governator);
 
         vm.expectRevert("!admin");
-        l1Deployer.updateRollupManager(rollupID, governator);
+        l1Deployer.updateEscrowManager(rollupID, governator);
 
         vm.expectEmit(true, true, true, true, address(l1Deployer));
-        emit UpdateRollupManager(rollupID, governator);
+        emit UpdateEscrowManager(rollupID, governator);
         vm.prank(rollupAdmin);
-        l1Deployer.updateRollupManager(rollupID, governator);
+        l1Deployer.updateEscrowManager(rollupID, governator);
 
         assertEq(l1Deployer.getRollupContract(rollupID), rollupContract);
-        assertEq(l1Deployer.getRollupManager(rollupID), governator);
+        assertEq(l1Deployer.getEscrowManager(rollupID), governator);
         assertEq(l1Deployer.getEscrow(rollupID, address(asset)), address(0));
     }
 
     function test_registerRollup_badIdea() public {
         uint32 rollupID = 69;
         assertEq(l1Deployer.getRollupContract(rollupID), address(0));
-        assertEq(l1Deployer.getRollupManager(rollupID), address(0));
+        assertEq(l1Deployer.getEscrowManager(rollupID), address(0));
         assertEq(l1Deployer.getEscrow(rollupID, address(asset)), address(0));
 
         vm.expectRevert();
@@ -131,7 +135,7 @@ contract L1DeployerTest is Setup {
     function test_newEscrow() public {
         uint32 rollupID = 1;
         assertEq(l1Deployer.getRollupContract(rollupID), address(0));
-        assertEq(l1Deployer.getRollupManager(rollupID), address(0));
+        assertEq(l1Deployer.getEscrowManager(rollupID), address(0));
         assertEq(l1Deployer.getEscrow(rollupID, address(asset)), address(0));
         assertEq(l1Deployer.getVault(address(asset)), address(0));
 
@@ -155,7 +159,7 @@ contract L1DeployerTest is Setup {
 
         // Rollup should be registered, vault and escrow deployed
         assertEq(l1Deployer.getRollupContract(rollupID), rollupContract);
-        assertEq(l1Deployer.getRollupManager(rollupID), rollupAdmin);
+        assertEq(l1Deployer.getEscrowManager(rollupID), rollupAdmin);
         assertEq(l1Deployer.getEscrow(rollupID, address(asset)), _l1Escrow);
         assertEq(l1Deployer.getVault(address(asset)), _vault);
 
@@ -201,7 +205,7 @@ contract L1DeployerTest is Setup {
     function test_customVault_preDeployed() public {
         uint32 rollupID = 1;
         assertEq(l1Deployer.getRollupContract(rollupID), address(0));
-        assertEq(l1Deployer.getRollupManager(rollupID), address(0));
+        assertEq(l1Deployer.getEscrowManager(rollupID), address(0));
         assertEq(l1Deployer.getEscrow(rollupID, address(asset)), address(0));
         assertEq(l1Deployer.getVault(address(asset)), address(0));
 
@@ -242,7 +246,7 @@ contract L1DeployerTest is Setup {
 
         // Rollup should be registered, vault and escrow deployed
         assertEq(l1Deployer.getRollupContract(rollupID), rollupContract);
-        assertEq(l1Deployer.getRollupManager(rollupID), rollupAdmin);
+        assertEq(l1Deployer.getEscrowManager(rollupID), rollupAdmin);
         assertEq(l1Deployer.getEscrow(rollupID, address(asset)), _l1Escrow);
         assertEq(l1Deployer.getVault(address(asset)), address(0));
         assertEq(l1Deployer.getVault(address(asset), rollupID), _vault);

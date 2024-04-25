@@ -12,16 +12,19 @@ contract L1Deployer is RoleManager {
     event RegisteredNewRollup(
         uint32 indexed rollupID,
         address indexed rollupContract,
-        address indexed manager
+        address indexed escrowManager
     );
 
-    event UpdateRollupManager(uint32 indexed rollupID, address indexed manager);
+    event UpdateEscrowManager(
+        uint32 indexed rollupID,
+        address indexed escrowManager
+    );
 
     event NewL1Escrow(uint32 indexed rollupID, address indexed l1Escrow);
 
     struct ChainConfig {
         IPolygonRollupContract rollupContract;
-        address manager;
+        address escrowManager;
         mapping(address => address) escrows;
     }
 
@@ -86,6 +89,21 @@ contract L1Deployer is RoleManager {
                            ESCROW CREATION
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @notice Deploy a new L1 escrow contract for a specific rollup.
+     * @dev This will also trigger the L2 deployer to deploy deploy all needed
+     *   contracts for the new bridged asset.
+     *
+     * This will register the rollup internally if not yet done.
+     *
+     * This will deploy a new Yearn vault and do the full setup if a default version
+     * is not yet deployed.
+     *
+     * @param _rollupID The rollups ID
+     * @param _asset The asset to bridge to the rollup.
+     * @return _l1Escrow The address of the rollup specific l1 Escrow.
+     * @return _vault The Yearn vault the escrow will deposit into.
+     */
     function newEscrow(
         uint32 _rollupID,
         address _asset
@@ -115,17 +133,27 @@ contract L1Deployer is RoleManager {
                            ROLLUP MANAGEMENT
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @notice Register a rollup with this deployer contract.
+     * @dev Only a rollups Admin can set the `_escrowManager`
+     * @param _rollupID ID for the rollup to register
+     * @param _escrowManager Address to set as the L1 Manager.
+     */
     function registerRollup(
         uint32 _rollupID,
-        address _l1Manager
+        address _escrowManager
     ) external virtual {
         require(getRollupContract(_rollupID) == address(0), "registered");
-        _registerRollup(_rollupID, _l1Manager);
+        _registerRollup(_rollupID, _escrowManager);
     }
 
+    /**
+     * @dev Registers a new rollup with the Deployer.
+     *   This is called either manually or during the first {newEscrow} call.
+     */
     function _registerRollup(
         uint32 _rollupID,
-        address _l1Manager
+        address _escrowManager
     ) internal virtual {
         ChainConfig storage chainConfig_ = _chainConfig[_rollupID];
 
@@ -138,33 +166,45 @@ contract L1Deployer is RoleManager {
         // If the caller is not the rollup Admin.
         if (msg.sender != _rollupContract.admin()) {
             // Default the manager to be the admin
-            _l1Manager = admin;
+            _escrowManager = admin;
         }
 
         chainConfig_.rollupContract = _rollupContract;
-        chainConfig_.manager = _l1Manager;
+        chainConfig_.escrowManager = _escrowManager;
 
         emit RegisteredNewRollup(
             _rollupID,
             address(_rollupContract),
-            _l1Manager
+            _escrowManager
         );
     }
 
-    function updateRollupManager(
+    /**
+     * @notice Allows the Rollup Admin to change the L1 Manager.
+     * @param _rollupID ID for the rollup.
+     * @param _escrowManager New address to set as l1Manager in new escrows.
+     */
+    function updateEscrowManager(
         uint32 _rollupID,
-        address _l1Manager
+        address _escrowManager
     ) external virtual onlyRollupAdmin(_rollupID) {
-        require(_l1Manager != address(0), "ZERO ADDRESS");
-        _chainConfig[_rollupID].manager = _l1Manager;
+        require(_escrowManager != address(0), "ZERO ADDRESS");
+        _chainConfig[_rollupID].escrowManager = _escrowManager;
 
-        emit UpdateRollupManager(_rollupID, _l1Manager);
+        emit UpdateEscrowManager(_rollupID, _escrowManager);
     }
 
     /*//////////////////////////////////////////////////////////////
                         CUSTOM VAULTS
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @notice Creates a new custom vault and escrow for a specific asset on the specified rollup.
+     * @param _rollupID The ID of the rollup.
+     * @param _asset The address of the asset for which the vault and escrow are created.
+     * @return _l1Escrow The address of the newly created L1 escrow.
+     * @return _vault The address of the newly created vault.
+     */
     function newCustomVault(
         uint32 _rollupID,
         address _asset
@@ -178,6 +218,13 @@ contract L1Deployer is RoleManager {
         _l1Escrow = _newCustomVault(_rollupID, _asset, _vault);
     }
 
+    /**
+     * @notice Creates a new custom vault for a specific asset on the specified rollup.
+     * @param _rollupID The ID of the rollup.
+     * @param _asset The address of the asset for which the vault is created.
+     * @param _vault The address of the vault.
+     * @return _l1Escrow The address of the newly created L1 escrow.
+     */
     function newCustomVault(
         uint32 _rollupID,
         address _asset,
@@ -189,6 +236,10 @@ contract L1Deployer is RoleManager {
         _l1Escrow = _newCustomVault(_rollupID, _asset, _vault);
     }
 
+    /**
+     * @dev Deploys an L1 Escrow for a custom vault if one does not exist.
+     *  Will store all relevant information as well.
+     */
     function _newCustomVault(
         uint32 _rollupID,
         address _asset,
@@ -207,6 +258,10 @@ contract L1Deployer is RoleManager {
                         ESCROW CREATION
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @dev Deploys a new L1 Escrow and send a message to the bridge to
+     *   tell the L2 deployer to deploy the needed contract on the L2
+     */
     function _deployL1Escrow(
         uint32 _rollupID,
         address _asset,
@@ -214,11 +269,12 @@ contract L1Deployer is RoleManager {
     ) internal returns (address _l1Escrow) {
         ChainConfig storage chainConfig_ = _chainConfig[_rollupID];
 
+        // Get the init data for the proxy implementation
         bytes memory data = abi.encodeCall(
             L1YearnEscrow.initialize,
             (
                 chainConfig_.rollupContract.admin(),
-                chainConfig_.manager,
+                chainConfig_.escrowManager,
                 address(polygonZkEVMBridge),
                 getL2EscrowAddress(_asset),
                 _rollupID,
@@ -228,8 +284,10 @@ contract L1Deployer is RoleManager {
             )
         );
 
+        // Cache to double check we deploy to the right address.
         address expectedL1Escrow = getL1EscrowAddress(_asset);
 
+        // Deploy the new escrow and initialize
         _l1Escrow = _create3Deploy(
             keccak256(abi.encodePacked(bytes("L1Escrow:"), _asset)),
             getPositionHolder(ESCROW_IMPLEMENTATION),
@@ -262,18 +320,28 @@ contract L1Deployer is RoleManager {
                         GETTER FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @dev Returns the address of the rollup contract associated with the specified rollup ID.
+     * @param _rollupID The ID of the rollup.
+     * @return The address of the rollup contract.
+     */
     function getRollupContract(uint32 _rollupID) public view returns (address) {
         return address(_chainConfig[_rollupID].rollupContract);
     }
 
-    function getRollupManager(uint32 _rollupID) public view returns (address) {
-        return _chainConfig[_rollupID].manager;
+    /**
+     * @dev Returns the address of the escrow manager associated with the specified rollup.
+     * @param _rollupID The ID of the rollup.
+     * @return The address of the escrow manager.
+     */
+    function getEscrowManager(uint32 _rollupID) public view returns (address) {
+        return _chainConfig[_rollupID].escrowManager;
     }
 
     /**
-     * @notice Get the L1 Escrow for a specific asset and chain ID.
+     * @notice Get the L1 Escrow for a specific asset and rollup ID.
      * @dev This will return address(0) if one has not been added or deployed.
-     * @param _rollupID The rollup chain ID.
+     * @param _rollupID The ID of the rollup.
      * @param _asset The underlying asset used.
      * @return The Escrow for the specified `_asset` and `_rollupID`.
      */

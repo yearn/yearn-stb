@@ -10,7 +10,7 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {DebtAllocatorFactory} from "@vault-periphery/debtAllocators/DebtAllocatorFactory.sol";
 
-/// @title PolyYearn Stake the Bridge Role Manager.
+/// @title Yearn Stake the Bridge Role Manager.
 contract RoleManager is DeployerBase {
     /// @notice Revert message for when a contract has already been deployed.
     error AlreadyDeployed(address _contract);
@@ -109,7 +109,7 @@ contract RoleManager is DeployerBase {
             _escrowImplementation
         )
     {
-        chad = _czar;
+        chad = _governator;
 
         // Governator gets no roles.
         _setPositionHolder(GOVERNATOR, _governator);
@@ -463,7 +463,7 @@ contract RoleManager is DeployerBase {
      */
     function removeVault(
         address _vault
-    ) external virtual onlyPositionHolder(MANAGEMENT) {
+    ) external virtual onlyPositionHolder(CZAR) {
         // Get the vault specific config.
         VaultConfig memory config = vaultConfig[_vault];
         // Make sure the vault has been added to the role manager.
