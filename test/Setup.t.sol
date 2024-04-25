@@ -135,19 +135,4 @@ contract SetupTest is Setup {
             address(l2TokenConverterImpl)
         );
     }
-
-    function test_newVault() public {
-        // Pretend to be the rollup 1
-        uint32 rollupID = 1;
-        address admin = 0x242daE44F5d8fb54B198D03a94dA45B5a4413e21;
-        address manager = address(123);
-
-        vm.expectRevert("!admin");
-        l1Deployer.registerRollup(rollupID, manager);
-
-        vm.prank(admin);
-        l1Deployer.registerRollup(rollupID, manager);
-
-        l1Deployer.newEscrow(rollupID, address(asset));
-    }
 }

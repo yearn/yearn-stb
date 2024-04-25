@@ -4,34 +4,34 @@ pragma solidity >=0.8.18;
 import "forge-std/console.sol";
 import {ExtendedTest} from "./ExtendedTest.sol";
 
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Proxy} from "@zkevm-stb/Proxy.sol";
+import {L2Token} from "@zkevm-stb/L2Token.sol";
+import {L2Escrow} from "@zkevm-stb/L2Escrow.sol";
+import {L2TokenConverter} from "@zkevm-stb/L2TokenConverter.sol";
+
+import {L1Deployer} from "../../src/L1Deployer.sol";
+import {L2Deployer} from "../../src/L2Deployer.sol";
+import {L1YearnEscrow} from "../../src/L1YearnEscrow.sol";
 
 import {Roles} from "@yearn-vaults/interfaces/Roles.sol";
 import {IVault} from "@yearn-vaults/interfaces/IVault.sol";
 import {IStrategy} from "../../src/interfaces/Yearn/IStrategy.sol";
 import {IVaultFactory} from "@yearn-vaults/interfaces/IVaultFactory.sol";
 
-import {Registry, RegistryFactory} from "@vault-periphery/registry/RegistryFactory.sol";
-import {DebtAllocator, DebtAllocatorFactory} from "@vault-periphery/debtAllocators/DebtAllocatorFactory.sol";
+import {MockTokenizedStrategy} from "../mocks/MockTokenizedStrategy.sol";
 
 import {ICREATE3Factory} from "../../src/interfaces/ICREATE3Factory.sol";
 
-import {IPolygonZkEVMBridge} from "../../src/interfaces/Polygon/IPolygonZkEVMBridge.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {IAccountant} from "../../src/interfaces/Yearn/IAccountant.sol";
 import {IAccountantFactory} from "../../src/interfaces/Yearn/IAccountantFactory.sol";
 
-import {L1Deployer} from "../../src/L1Deployer.sol";
-import {L2Deployer} from "../../src/L2Deployer.sol";
-import {L1YearnEscrow} from "../../src/L1YearnEscrow.sol";
+import {IPolygonZkEVMBridge} from "../../src/interfaces/Polygon/IPolygonZkEVMBridge.sol";
 
-import {Proxy} from "@zkevm-stb/Proxy.sol";
-import {L2Escrow} from "@zkevm-stb/L2Escrow.sol";
-import {L2Token} from "@zkevm-stb/L2Token.sol";
-import {L2TokenConverter} from "@zkevm-stb/L2TokenConverter.sol";
-
-import {MockTokenizedStrategy} from "../mocks/MockTokenizedStrategy.sol";
+import {Registry, RegistryFactory} from "@vault-periphery/registry/RegistryFactory.sol";
+import {DebtAllocator, DebtAllocatorFactory} from "@vault-periphery/debtAllocators/DebtAllocatorFactory.sol";
 
 contract Setup is ExtendedTest {
     using SafeERC20 for ERC20;
@@ -39,13 +39,11 @@ contract Setup is ExtendedTest {
     // Contract instances that we will use repeatedly.
     ERC20 public asset;
 
-    IPolygonZkEVMBridge public polygonZkEVMBridge =
-        IPolygonZkEVMBridge(0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe);
-
-    address public rollupManager = 0x5132A183E9F3CB7C848b0AAC5Ae0c4f0491B7aB2;
-
     ICREATE3Factory internal constant create3Factory =
         ICREATE3Factory(0x93FEC2C00BfE902F733B57c5a6CeeD7CD1384AE1);
+
+    IPolygonZkEVMBridge public polygonZkEVMBridge =
+        IPolygonZkEVMBridge(0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe);
 
     // Vault contracts to test with.
     IVault public vault;
@@ -67,18 +65,18 @@ contract Setup is ExtendedTest {
 
     /// Core Contracts \\\\
 
-    ///// L1 Contracts \\\\\
+    ///// L1 Contracts \\\\
     L1Deployer public l1Deployer;
 
     L1YearnEscrow public l1EscrowImpl;
 
     //// L2 Contracts \\\\\
 
-    L2Deployer public l2Deployer;
+    L2Token public l2TokenImpl;
 
     L2Escrow public l2EscrowImpl;
 
-    L2Token public l2TokenImpl;
+    L2Deployer public l2Deployer;
 
     L2TokenConverter public l2TokenConverterImpl;
 
