@@ -102,12 +102,13 @@ contract DeployerBase is Positions {
             );
     }
 
+    /**
+     * @dev Get the expected address based on the deployer and salt.
+     */
     function _getDeployed(
         address deployer,
         bytes32 salt
     ) internal view virtual returns (address) {
-        // hash salt with the deployer address to give each deployer its own namespace
-        //salt = keccak256(abi.encodePacked(deployer, salt));
         return CREATE3.getDeployed(deployer, salt);
     }
 
@@ -128,7 +129,6 @@ contract DeployerBase is Positions {
             abi.encode(_implementation, _initData)
         );
 
-        // _salt = keccak256(abi.encodePacked(address(this), _salt));
         return CREATE3.deploy(_salt, _creationCode, 0);
     }
 }
