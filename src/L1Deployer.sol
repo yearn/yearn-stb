@@ -25,7 +25,7 @@ contract L1Deployer is RoleManager {
     struct ChainConfig {
         IPolygonRollupContract rollupContract;
         address escrowManager;
-        mapping(address => address) escrows;
+        mapping(address => address) escrows; // asset => escrow contract
     }
 
     /// @notice Only allow either governance or the position holder to call.
@@ -113,7 +113,7 @@ contract L1Deployer is RoleManager {
             _registerRollup(_rollupID, address(0));
         }
 
-        // Verify that the vault is not already set for that chain.
+        // Verify that an escrow is not already deployed for that chain.
         _l1Escrow = getEscrow(_rollupID, _asset);
         if (_l1Escrow != address(0)) revert AlreadyDeployed(_l1Escrow);
 
@@ -155,8 +155,6 @@ contract L1Deployer is RoleManager {
         uint32 _rollupID,
         address _escrowManager
     ) internal virtual {
-        ChainConfig storage chainConfig_ = _chainConfig[_rollupID];
-
         IPolygonRollupContract _rollupContract = rollupManager
             .rollupIDToRollupData(_rollupID)
             .rollupContract;
@@ -164,13 +162,16 @@ contract L1Deployer is RoleManager {
         // Checks the rollup ID is valid
         address admin = _rollupContract.admin();
         // If the caller is not the rollup Admin.
-        if (msg.sender != _rollupContract.admin()) {
+        if (
+            msg.sender != _rollupContract.admin() ||
+            _escrowManager == address(0)
+        ) {
             // Default the manager to be the admin
             _escrowManager = admin;
         }
 
-        chainConfig_.rollupContract = _rollupContract;
-        chainConfig_.escrowManager = _escrowManager;
+        _chainConfig[_rollupID].rollupContract = _rollupContract;
+        _chainConfig[_rollupID].escrowManager = _escrowManager;
 
         emit RegisteredNewRollup(
             _rollupID,
@@ -202,7 +203,7 @@ contract L1Deployer is RoleManager {
      * @notice Creates a new custom vault and escrow for a specific asset on the specified rollup.
      * @param _rollupID The ID of the rollup.
      * @param _asset The address of the asset for which the vault and escrow are created.
-     * @return _l1Escrow The address of the newly created L1 escrow.
+     * @return _l1Escrow The address of the L1 escrow.
      * @return _vault The address of the newly created vault.
      */
     function newCustomVault(
@@ -219,17 +220,18 @@ contract L1Deployer is RoleManager {
     }
 
     /**
-     * @notice Creates a new custom vault for a specific asset on the specified rollup.
+     * @notice Adds a new custom vault for a specific asset on the specified rollup.
      * @param _rollupID The ID of the rollup.
      * @param _asset The address of the asset for which the vault is created.
      * @param _vault The address of the vault.
-     * @return _l1Escrow The address of the newly created L1 escrow.
+     * @return _l1Escrow The address of the L1 escrow.
      */
     function newCustomVault(
         uint32 _rollupID,
         address _asset,
         address _vault
     ) external virtual onlyRollupAdmin(_rollupID) returns (address _l1Escrow) {
+        // If the vault has not been registered yet.
         if (!isVaultsRoleManager(_vault)) {
             _addNewVault(_rollupID, _vault);
         }
@@ -250,8 +252,6 @@ contract L1Deployer is RoleManager {
         if (_l1Escrow == address(0)) {
             _l1Escrow = _deployL1Escrow(_rollupID, _asset, _vault);
         }
-
-        _assetToVault[_asset][_rollupID] = _vault;
     }
 
     /*//////////////////////////////////////////////////////////////
