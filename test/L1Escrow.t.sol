@@ -10,7 +10,7 @@ contract EscrowTest is Setup {
 
     function setUp() public virtual override {
         super.setUp();
-        l2TokenAddress = getL2TokenAddress(address(asset));
+        l2TokenAddress = l1Deployer.getL2TokenAddress(address(asset));
         vault = deployMockVault();
     }
 
@@ -55,13 +55,7 @@ contract EscrowTest is Setup {
             )
         );
 
-        mockEscrow = L1YearnEscrow(
-            _create3Deploy(
-                keccak256(abi.encodePacked(bytes("L1Escrow:"), address(asset))),
-                address(l1EscrowImpl),
-                data
-            )
-        );
+        mockEscrow = L1YearnEscrow(_deployProxy(address(l1EscrowImpl), data));
 
         assertEq(mockEscrow.owner(), governator);
         assertTrue(mockEscrow.hasRole(mockEscrow.ESCROW_MANAGER_ROLE(), czar));
@@ -80,7 +74,7 @@ contract EscrowTest is Setup {
 
     function test_bridgeAsset(uint256 _amount) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
-        address counterPart = getL2EscrowAddress(address(asset));
+        address counterPart = l1Deployer.getL2EscrowAddress(address(asset));
         mockEscrow = deployMockL1Escrow();
 
         // Simulate a bridge txn
@@ -157,7 +151,7 @@ contract EscrowTest is Setup {
     ) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
         _minimumBuffer = bound(_minimumBuffer, 10, maxFuzzAmount);
-        address counterPart = getL2EscrowAddress(address(asset));
+        address counterPart = l1Deployer.getL2EscrowAddress(address(asset));
 
         mockEscrow = deployMockL1Escrow();
 
@@ -193,7 +187,7 @@ contract EscrowTest is Setup {
 
     function test_bridgeAsset_updateVault(uint256 _amount) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
-        address counterPart = getL2EscrowAddress(address(asset));
+        address counterPart = l1Deployer.getL2EscrowAddress(address(asset));
 
         mockEscrow = deployMockL1Escrow();
 
@@ -248,7 +242,7 @@ contract EscrowTest is Setup {
 
     function test_managerWithdraw(uint256 _amount) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
-        address counterPart = getL2EscrowAddress(address(asset));
+        address counterPart = l1Deployer.getL2EscrowAddress(address(asset));
 
         mockEscrow = deployMockL1Escrow();
 
@@ -293,7 +287,7 @@ contract EscrowTest is Setup {
 
     function test_illiquidWithdraw(uint256 _amount) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
-        address counterPart = getL2EscrowAddress(address(asset));
+        address counterPart = l1Deployer.getL2EscrowAddress(address(asset));
 
         mockEscrow = deployMockL1Escrow();
 
@@ -334,7 +328,7 @@ contract EscrowTest is Setup {
     ) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
         _minimumBuffer = bound(_minimumBuffer, 10, _amount / 2);
-        address counterPart = getL2EscrowAddress(address(asset));
+        address counterPart = l1Deployer.getL2EscrowAddress(address(asset));
 
         mockEscrow = deployMockL1Escrow();
 

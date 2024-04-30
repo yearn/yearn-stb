@@ -20,8 +20,7 @@ import {IVaultFactory} from "@yearn-vaults/interfaces/IVaultFactory.sol";
 
 import {MockTokenizedStrategy} from "../mocks/MockTokenizedStrategy.sol";
 
-import {ICREATE3Factory} from "../../src/interfaces/ICREATE3Factory.sol";
-
+import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -38,9 +37,6 @@ contract Setup is ExtendedTest {
 
     // Contract instances that we will use repeatedly.
     ERC20 public asset;
-
-    ICREATE3Factory internal constant create3Factory =
-        ICREATE3Factory(0x93FEC2C00BfE902F733B57c5a6CeeD7CD1384AE1);
 
     IPolygonZkEVMBridge public polygonZkEVMBridge =
         IPolygonZkEVMBridge(0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe);
@@ -204,7 +200,6 @@ contract Setup is ExtendedTest {
         vm.label(address(l2EscrowImpl), "L2 Escrow IMPL");
         vm.label(address(l1EscrowImpl), "L1 escrow IMPL");
         vm.label(address(vaultFactory), " vault factory");
-        vm.label(address(create3Factory), "Create 3 Factory");
         vm.label(address(polygonZkEVMBridge), "Polygon Bridge");
         vm.label(address(allocatorFactory), "Allocator Factory");
         vm.label(address(l2TokenConverterImpl), "L2 Converter IMPL");
@@ -258,21 +253,22 @@ contract Setup is ExtendedTest {
                 governator,
                 czar,
                 address(polygonZkEVMBridge),
-                getL2EscrowAddress(address(asset)),
+                l1Deployer.getL2EscrowAddress(address(asset)),
                 l2RollupID,
                 address(asset),
-                getL2TokenAddress(address(asset)),
+                l1Deployer.getL2TokenAddress(address(asset)),
                 address(vault)
             )
         );
 
-        newEscrow = L1YearnEscrow(
-            _create3Deploy(
-                keccak256(abi.encodePacked(bytes("L1Escrow:"), address(asset))),
-                address(l1EscrowImpl),
-                data
-            )
-        );
+        return L1YearnEscrow(_deployProxy(address(l1EscrowImpl), data));
+    }
+
+    function _deployProxy(
+        address implementation,
+        bytes memory data
+    ) internal returns (address) {
+        return address(new Proxy(implementation, data));
     }
 
     function bridgeAsset(
@@ -330,71 +326,7 @@ contract Setup is ExtendedTest {
         deal(address(_asset), _to, balanceBefore + _amount);
     }
 
-    function getL2TokenAddress(
-        address _l1TokenAddress
-    ) public view virtual returns (address) {
-        return
-            create3Factory.getDeployed(
-                address(l2Deployer),
-                keccak256(abi.encodePacked(bytes("L2Token:"), _l1TokenAddress))
-            );
-    }
-
-    function getL1EscrowAddress(
-        address _l1TokenAddress
-    ) public view virtual returns (address) {
-        return
-            create3Factory.getDeployed(
-                address(l1Deployer),
-                keccak256(abi.encodePacked(bytes("L1Escrow:"), _l1TokenAddress))
-            );
-    }
-
-    function getL2EscrowAddress(
-        address _l1TokenAddress
-    ) public view virtual returns (address) {
-        return
-            create3Factory.getDeployed(
-                address(l2Deployer),
-                keccak256(abi.encodePacked(bytes("L2Escrow:"), _l1TokenAddress))
-            );
-    }
-
-    function getL2ConverterAddress(
-        address _l1TokenAddress
-    ) public view virtual returns (address) {
-        return
-            create3Factory.getDeployed(
-                address(l2Deployer),
-                keccak256(
-                    abi.encodePacked(
-                        bytes("L2TokenConverter:"),
-                        _l1TokenAddress
-                    )
-                )
-            );
-    }
-
-    function _create3Deploy(
-        bytes32 _salt,
-        address _implementation,
-        bytes memory _initData
-    ) internal returns (address) {
-        bytes memory _creationCode = abi.encodePacked(
-            type(Proxy).creationCode,
-            abi.encode(_implementation, _initData)
-        );
-
-        return create3Factory.deploy(_salt, _creationCode);
-    }
-
     function _setTokenAddrs() internal {
-        tokenAddrs["WBTC"] = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
-        tokenAddrs["YFI"] = 0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e;
-        tokenAddrs["WETH"] = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-        tokenAddrs["LINK"] = 0x514910771AF9Ca656af840dff83E8264EcF986CA;
-        tokenAddrs["USDT"] = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
         tokenAddrs["DAI"] = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-        tokenAddrs["USDC"] = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     }
 }

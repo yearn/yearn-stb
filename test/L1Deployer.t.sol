@@ -151,7 +151,7 @@ contract L1DeployerTest is Setup {
                 .admin()
         );
 
-        address _l1Escrow = getL1EscrowAddress(address(asset));
+        address _l1Escrow = l1Deployer.getL1EscrowAddress(address(asset));
 
         vm.expectEmit(true, true, true, true, address(l1Deployer));
         emit NewL1Escrow(rollupID, _l1Escrow);
@@ -186,13 +186,13 @@ contract L1DeployerTest is Setup {
         assertEq(escrow.polygonZkEVMBridge(), address(polygonZkEVMBridge));
         assertEq(
             escrow.counterpartContract(),
-            getL2EscrowAddress(address(asset))
+            l1Deployer.getL2EscrowAddress(address(asset))
         );
         assertEq(escrow.counterpartNetwork(), rollupID);
         assertEq(address(escrow.originTokenAddress()), address(asset));
         assertEq(
             address(escrow.wrappedTokenAddress()),
-            getL2TokenAddress(address(asset))
+            l1Deployer.getL2TokenAddress(address(asset))
         );
         assertEq(address(escrow.vaultAddress()), address(vault));
         assertEq(escrow.minimumBuffer(), 0);
@@ -234,7 +234,7 @@ contract L1DeployerTest is Setup {
         vm.prank(rollupAdmin);
         IVault(_vault).transfer_role_manager(address(l1Deployer));
 
-        address _l1Escrow = getL1EscrowAddress(address(asset));
+        address _l1Escrow = l1Deployer.getL1EscrowAddress(address(asset));
 
         vm.expectRevert("!admin");
         l1Deployer.newCustomVault(rollupID, address(asset), _vault);
@@ -273,13 +273,13 @@ contract L1DeployerTest is Setup {
         assertEq(escrow.polygonZkEVMBridge(), address(polygonZkEVMBridge));
         assertEq(
             escrow.counterpartContract(),
-            getL2EscrowAddress(address(asset))
+            l1Deployer.getL2EscrowAddress(address(asset))
         );
         assertEq(escrow.counterpartNetwork(), rollupID);
         assertEq(address(escrow.originTokenAddress()), address(asset));
         assertEq(
             address(escrow.wrappedTokenAddress()),
-            getL2TokenAddress(address(asset))
+            l1Deployer.getL2TokenAddress(address(asset))
         );
         assertEq(address(escrow.vaultAddress()), address(vault));
         assertEq(escrow.minimumBuffer(), 0);
