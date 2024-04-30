@@ -122,7 +122,7 @@ contract L1DeployerTest is Setup {
         assertEq(l1Deployer.getEscrow(rollupID, address(asset)), address(0));
     }
 
-    function test_registerRollup_badIdea() public {
+    function test_registerRollup_badId() public {
         uint32 rollupID = 69;
         assertEq(l1Deployer.getRollupContract(rollupID), address(0));
         assertEq(l1Deployer.getEscrowManager(rollupID), address(0));

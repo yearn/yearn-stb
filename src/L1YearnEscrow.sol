@@ -171,7 +171,7 @@ contract L1YearnEscrow is L1Escrow {
                 }
             }
 
-            // Check again to account for if there was underlying
+            // Check again to account for if there was loose underlying
             if (amount > maxWithdraw) {
                 // Send an equivalent amount of shares for the difference.
                 uint256 shares = _vault.convertToShares(amount - maxWithdraw);
