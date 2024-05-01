@@ -338,6 +338,28 @@ contract RoleManager is DeployerBase {
     //////////////////////////////////////////////////////////////*/
 
     /**
+     * @notice Deploys a new vault to the RoleManager for the default version.
+     * @dev This will override any existing default vault.
+     * @param _asset Address of the asset to be used.
+     */
+    function newVault(
+        address _asset
+    ) external virtual onlyPositionHolder(GOVERNATOR) {
+        _newVault(ORIGIN_NETWORK_ID, _asset);
+    }
+
+    /**
+     * @notice Adds a new vault to the RoleManager for the default version.
+     * @dev This will override any existing default vault.
+     * @param _vault Address of the vault to be added.
+     */
+    function addNewVault(
+        address _vault
+    ) external virtual onlyPositionHolder(GOVERNATOR) {
+        _addNewVault(ORIGIN_NETWORK_ID, _vault);
+    }
+
+    /**
      * @notice Adds a new vault to the RoleManager with the specified category and debt allocator.
      * @dev If not already endorsed this function will endorse the vault.
      * @param _rollupID rollupID for the vault to use.

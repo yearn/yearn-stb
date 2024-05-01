@@ -171,7 +171,7 @@ contract L1YearnEscrow is L1Escrow {
                 }
             }
 
-            // Check again to account for if there was underlying
+            // Check again to account for if there was loose underlying
             if (amount > maxWithdraw) {
                 // Send an equivalent amount of shares for the difference.
                 uint256 shares = _vault.convertToShares(amount - maxWithdraw);
@@ -239,15 +239,18 @@ contract L1YearnEscrow is L1Escrow {
             // Max approve the new vault
             originToken.forceApprove(_vaultAddress, 2 ** 256 - 1);
 
-            // Deposit any loose funds
+            // Deposit any loose funds over minimum buffer
             uint256 balance = originToken.balanceOf(address(this));
-            if (balance != 0)
-                IVault(_vaultAddress).deposit(balance, address(this));
+            uint256 minimumBuffer = $.minimumBuffer;
+            if (balance > minimumBuffer)
+                IVault(_vaultAddress).deposit(
+                    balance - minimumBuffer,
+                    address(this)
+                );
         }
 
         // Update Storage
         $.vaultAddress = IVault(_vaultAddress);
-
         emit UpdateVaultAddress(_vaultAddress);
     }
 

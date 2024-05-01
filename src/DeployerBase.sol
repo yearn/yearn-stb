@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Positions} from "./Positions.sol";
 import {Proxy} from "@zkevm-stb/Proxy.sol";
-import {ICREATE3Factory} from "./interfaces/ICREATE3Factory.sol";
+import {CREATE3} from "./libraries/CREATE3.sol";
 import {IPolygonZkEVMBridge} from "./interfaces/Polygon/IPolygonZkEVMBridge.sol";
 
 /**
@@ -12,10 +12,6 @@ import {IPolygonZkEVMBridge} from "./interfaces/Polygon/IPolygonZkEVMBridge.sol"
  */
 contract DeployerBase is Positions {
     uint32 internal constant ORIGIN_NETWORK_ID = 0;
-
-    /// @notice Address of the ICREATE3Factory contract used for deployment
-    ICREATE3Factory internal constant create3Factory =
-        ICREATE3Factory(0x93FEC2C00BfE902F733B57c5a6CeeD7CD1384AE1);
 
     /*//////////////////////////////////////////////////////////////
                            POSITION ID'S
@@ -50,7 +46,7 @@ contract DeployerBase is Positions {
         address _l1TokenAddress
     ) public view virtual returns (address) {
         return
-            create3Factory.getDeployed(
+            _getDeployed(
                 getPositionHolder(L2_DEPLOYER),
                 keccak256(abi.encodePacked(bytes("L2Token:"), _l1TokenAddress))
             );
@@ -65,7 +61,7 @@ contract DeployerBase is Positions {
         address _l1TokenAddress
     ) public view virtual returns (address) {
         return
-            create3Factory.getDeployed(
+            _getDeployed(
                 getPositionHolder(L1_DEPLOYER),
                 keccak256(abi.encodePacked(bytes("L1Escrow:"), _l1TokenAddress))
             );
@@ -80,7 +76,7 @@ contract DeployerBase is Positions {
         address _l1TokenAddress
     ) public view virtual returns (address) {
         return
-            create3Factory.getDeployed(
+            _getDeployed(
                 getPositionHolder(L2_DEPLOYER),
                 keccak256(abi.encodePacked(bytes("L2Escrow:"), _l1TokenAddress))
             );
@@ -95,7 +91,7 @@ contract DeployerBase is Positions {
         address _l1TokenAddress
     ) public view virtual returns (address) {
         return
-            create3Factory.getDeployed(
+            _getDeployed(
                 getPositionHolder(L2_DEPLOYER),
                 keccak256(
                     abi.encodePacked(
@@ -104,6 +100,16 @@ contract DeployerBase is Positions {
                     )
                 )
             );
+    }
+
+    /**
+     * @dev Get the expected address based on the deployer and salt.
+     */
+    function _getDeployed(
+        address deployer,
+        bytes32 salt
+    ) internal view virtual returns (address) {
+        return CREATE3.getDeployed(deployer, salt);
     }
 
     /**
@@ -123,6 +129,6 @@ contract DeployerBase is Positions {
             abi.encode(_implementation, _initData)
         );
 
-        return create3Factory.deploy(_salt, _creationCode);
+        return CREATE3.deploy(_salt, _creationCode, 0);
     }
 }

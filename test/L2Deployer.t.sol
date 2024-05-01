@@ -68,9 +68,11 @@ contract L2DeployerTest is Setup {
             "ptTKN"
         );
 
-        address expectedTokenAddress = getL2TokenAddress(_asset);
-        address expectedEscrowAddress = getL2EscrowAddress(_asset);
-        address expectedConverterAddress = getL2ConverterAddress(_asset);
+        address expectedTokenAddress = l1Deployer.getL2TokenAddress(_asset);
+        address expectedEscrowAddress = l1Deployer.getL2EscrowAddress(_asset);
+        address expectedConverterAddress = l1Deployer.getL2ConverterAddress(
+            _asset
+        );
 
         vm.expectRevert("L2Deployer: Not PolygonZkEVMBridge");
         l2Deployer.onMessageReceived(address(l1Deployer), l1RollupID, data);
@@ -118,7 +120,9 @@ contract L2DeployerTest is Setup {
             "ptTKN"
         );
 
-        address expectedTokenAddress = getL2TokenAddress(address(asset));
+        address expectedTokenAddress = l1Deployer.getL2TokenAddress(
+            address(asset)
+        );
 
         vm.prank(address(polygonZkEVMBridge));
         l2Deployer.onMessageReceived(address(l1Deployer), l1RollupID, data);
@@ -188,7 +192,9 @@ contract L2DeployerTest is Setup {
             "ptTKN"
         );
 
-        address expectedEscrowAddress = getL2EscrowAddress(address(asset));
+        address expectedEscrowAddress = l1Deployer.getL2EscrowAddress(
+            address(asset)
+        );
 
         vm.prank(address(polygonZkEVMBridge));
         l2Deployer.onMessageReceived(address(l1Deployer), l1RollupID, data);
@@ -255,7 +261,7 @@ contract L2DeployerTest is Setup {
             "ptTKN"
         );
 
-        address expectedConverterAddress = getL2ConverterAddress(
+        address expectedConverterAddress = l1Deployer.getL2ConverterAddress(
             address(asset)
         );
 
