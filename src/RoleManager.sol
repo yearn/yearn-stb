@@ -559,6 +559,8 @@ contract RoleManager is DeployerBase {
 
     /**
      * @notice Setter function for updating a positions holder.
+     * @dev Updating `Governator` requires setting `PENDING_GOVERNATOR`
+     *  and then the pending address calling {acceptGovernator}.
      * @param _position Identifier for the position.
      * @param _newHolder New address for position.
      */

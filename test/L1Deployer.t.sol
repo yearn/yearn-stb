@@ -205,6 +205,106 @@ contract L1DeployerTest is Setup {
         );
     }
 
+    function test_newEscrow_secondChain() public {
+        uint32 rollupID = 1;
+        assertEq(l1Deployer.getRollupContract(rollupID), address(0));
+        assertEq(l1Deployer.getEscrowManager(rollupID), address(0));
+        assertEq(l1Deployer.getEscrow(rollupID, address(asset)), address(0));
+        assertEq(l1Deployer.getVault(address(asset)), address(0));
+
+        address rollupContract = address(
+            IPolygonRollupManager(polygonZkEVMBridge.polygonRollupManager())
+                .rollupIDToRollupData(rollupID)
+                .rollupContract
+        );
+        address rollupAdmin = address(
+            IPolygonRollupManager(polygonZkEVMBridge.polygonRollupManager())
+                .rollupIDToRollupData(rollupID)
+                .rollupContract
+                .admin()
+        );
+
+        address _l1Escrow = l1Deployer.getL1EscrowAddress(
+            address(asset),
+            rollupID
+        );
+
+        vm.expectEmit(true, true, true, true, address(l1Deployer));
+        emit NewL1Escrow(rollupID, _l1Escrow);
+        (, address _vault) = l1Deployer.newEscrow(rollupID, address(asset));
+
+        // Rollup should be registered, vault and escrow deployed
+        assertEq(l1Deployer.getRollupContract(rollupID), rollupContract);
+        assertEq(l1Deployer.getEscrowManager(rollupID), rollupAdmin);
+        assertEq(l1Deployer.getEscrow(rollupID, address(asset)), _l1Escrow);
+        assertEq(l1Deployer.getVault(address(asset)), _vault);
+
+        rollupID = 2;
+
+        assertEq(l1Deployer.getRollupContract(rollupID), address(0));
+        assertEq(l1Deployer.getEscrowManager(rollupID), address(0));
+        assertEq(l1Deployer.getEscrow(rollupID, address(asset)), address(0));
+
+        address secondRollupContract = address(
+            IPolygonRollupManager(polygonZkEVMBridge.polygonRollupManager())
+                .rollupIDToRollupData(rollupID)
+                .rollupContract
+        );
+        assertNeq(rollupContract, secondRollupContract);
+
+        address secondRollupAdmin = address(
+            IPolygonRollupManager(polygonZkEVMBridge.polygonRollupManager())
+                .rollupIDToRollupData(rollupID)
+                .rollupContract
+                .admin()
+        );
+        assertNeq(rollupAdmin, secondRollupAdmin);
+
+        address _secondL1Escrow = l1Deployer.getL1EscrowAddress(
+            address(asset),
+            rollupID
+        );
+        assertNeq(_secondL1Escrow, _l1Escrow);
+
+        vm.expectEmit(true, true, true, true, address(l1Deployer));
+        emit NewL1Escrow(rollupID, _secondL1Escrow);
+        (, address _secondVault) = l1Deployer.newEscrow(
+            rollupID,
+            address(asset)
+        );
+
+        // Rollup should be registered, same vault and new escrow deployed
+        assertEq(_vault, _secondVault);
+        assertEq(l1Deployer.getRollupContract(rollupID), secondRollupContract);
+        assertEq(l1Deployer.getEscrowManager(rollupID), secondRollupAdmin);
+        assertEq(
+            l1Deployer.getEscrow(rollupID, address(asset)),
+            _secondL1Escrow
+        );
+        assertEq(l1Deployer.getVault(address(asset)), _vault);
+
+        L1YearnEscrow escrow = L1YearnEscrow(_secondL1Escrow);
+
+        assertEq(escrow.owner(), secondRollupAdmin);
+        assertTrue(
+            escrow.hasRole(escrow.ESCROW_MANAGER_ROLE(), secondRollupAdmin)
+        );
+        assertEq(escrow.polygonZkEVMBridge(), address(polygonZkEVMBridge));
+        assertEq(
+            escrow.counterpartContract(),
+            l1Deployer.getL2EscrowAddress(address(asset))
+        );
+        assertEq(escrow.counterpartNetwork(), rollupID);
+        assertEq(address(escrow.originTokenAddress()), address(asset));
+        assertEq(
+            address(escrow.wrappedTokenAddress()),
+            l1Deployer.getL2TokenAddress(address(asset))
+        );
+        assertEq(address(escrow.vaultAddress()), _vault);
+        assertEq(escrow.minimumBuffer(), 0);
+        assertEq(asset.allowance(address(escrow), _vault), 2 ** 256 - 1);
+    }
+
     function test_customVault_preDeployed() public {
         uint32 rollupID = 1;
         assertEq(l1Deployer.getRollupContract(rollupID), address(0));

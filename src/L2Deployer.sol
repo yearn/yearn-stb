@@ -248,6 +248,8 @@ contract L2Deployer is DeployerBase {
 
     /**
      * @notice Setter function for updating a positions holder.
+     * @dev Updating `L2 Admin` requires setting `PENDING_ADMIN`
+     *  and then the pending address calling {acceptAdmin}.
      * @param _position Identifier for the position.
      * @param _newHolder New address for position.
      */
