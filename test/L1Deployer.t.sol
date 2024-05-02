@@ -151,7 +151,10 @@ contract L1DeployerTest is Setup {
                 .admin()
         );
 
-        address _l1Escrow = l1Deployer.getL1EscrowAddress(address(asset));
+        address _l1Escrow = l1Deployer.getL1EscrowAddress(
+            address(asset),
+            rollupID
+        );
 
         vm.expectEmit(true, true, true, true, address(l1Deployer));
         emit NewL1Escrow(rollupID, _l1Escrow);
@@ -234,7 +237,10 @@ contract L1DeployerTest is Setup {
         vm.prank(rollupAdmin);
         IVault(_vault).transfer_role_manager(address(l1Deployer));
 
-        address _l1Escrow = l1Deployer.getL1EscrowAddress(address(asset));
+        address _l1Escrow = l1Deployer.getL1EscrowAddress(
+            address(asset),
+            rollupID
+        );
 
         vm.expectRevert("!admin");
         l1Deployer.newCustomVault(rollupID, address(asset), _vault);

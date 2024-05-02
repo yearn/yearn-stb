@@ -55,15 +55,23 @@ contract DeployerBase is Positions {
     /**
      * @notice Get expected L1 escrow address for a given asset
      * @param _l1TokenAddress Address of the L1 token
+     * @param _rollupID Rollup ID for the L2.
      * @return Address of the expected L1 escrow contract
      */
     function getL1EscrowAddress(
-        address _l1TokenAddress
+        address _l1TokenAddress,
+        uint32 _rollupID
     ) public view virtual returns (address) {
         return
             _getDeployed(
                 getPositionHolder(L1_DEPLOYER),
-                keccak256(abi.encodePacked(bytes("L1Escrow:"), _l1TokenAddress))
+                keccak256(
+                    abi.encodePacked(
+                        bytes("L1Escrow:"),
+                        _l1TokenAddress,
+                        _rollupID
+                    )
+                )
             );
     }
 
