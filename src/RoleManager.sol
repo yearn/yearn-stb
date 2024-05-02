@@ -342,7 +342,7 @@ contract RoleManager is DeployerBase {
      * @dev This will override any existing default vault.
      * @param _asset Address of the asset to be used.
      */
-    function newVault(
+    function newDefaultVault(
         address _asset
     ) external virtual onlyPositionHolder(GOVERNATOR) {
         _newVault(ORIGIN_NETWORK_ID, _asset);
@@ -365,7 +365,7 @@ contract RoleManager is DeployerBase {
      * @param _rollupID rollupID for the vault to use.
      * @param _vault Address of the vault to be added.
      */
-    function _addNewVault(uint32 _rollupID, address _vault) public virtual {
+    function _addNewVault(uint32 _rollupID, address _vault) internal virtual {
         // If not the current role manager.
         if (IVault(_vault).role_manager() != address(this)) {
             // Accept the position of role manager.
