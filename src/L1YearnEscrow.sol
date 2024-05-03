@@ -135,7 +135,14 @@ contract L1YearnEscrow is L1Escrow {
             }
         }
 
-        $.vaultAddress.deposit(amount, address(this));
+        IVault _vault = $.vaultAddress;
+        uint256 maxDeposit = _vault.maxDeposit(address(this));
+        if (maxDeposit < amount) {
+            if (maxDeposit == 0) return;
+            amount = maxDeposit;
+        }
+
+        _vault.deposit(amount, address(this));
     }
 
     /**
@@ -241,10 +248,10 @@ contract L1YearnEscrow is L1Escrow {
 
             // Deposit any loose funds over minimum buffer
             uint256 balance = originToken.balanceOf(address(this));
-            uint256 minimumBuffer = $.minimumBuffer;
-            if (balance > minimumBuffer)
+            uint256 _minimumBuffer = $.minimumBuffer;
+            if (balance > _minimumBuffer)
                 IVault(_vaultAddress).deposit(
-                    balance - minimumBuffer,
+                    balance - _minimumBuffer,
                     address(this)
                 );
         }
@@ -265,5 +272,28 @@ contract L1YearnEscrow is L1Escrow {
         $.minimumBuffer = _minimumBuffer;
 
         emit UpdateMinimumBuffer(_minimumBuffer);
+    }
+
+    /**
+     * @notice Rebalance the funds to support the minimum buffer.
+     * @dev Will revert if the difference is over the maxDeposit.
+     */
+    function rebalance() external virtual {
+        VaultStorage storage $ = _getVaultStorage();
+        uint256 _minimumBuffer = $.minimumBuffer;
+        uint256 balance = originTokenAddress().balanceOf(address(this));
+
+        if (balance > _minimumBuffer) {
+            // Deposit the difference.
+            $.vaultAddress.deposit(balance - _minimumBuffer, address(this));
+        } else if (balance < _minimumBuffer) {
+            // Withdraw the difference
+            uint256 diff = _minimumBuffer - balance;
+            uint256 available = $.vaultAddress.maxWithdraw(address(this));
+
+            // Withdraw the min between the difference or what is available.
+            diff = diff > available ? available : diff;
+            $.vaultAddress.withdraw(diff, address(this), address(this));
+        }
     }
 }

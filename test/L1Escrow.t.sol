@@ -145,6 +145,71 @@ contract EscrowTest is Setup {
         assertEq(vault.balanceOf(address(mockEscrow)), 0);
     }
 
+    function test_bridgeAsset_maxDepositLimit(uint256 _amount) public {
+        _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
+        address counterPart = l1Deployer.getL2EscrowAddress(address(asset));
+        mockEscrow = deployMockL1Escrow();
+
+        vm.prank(governator);
+        vault.set_deposit_limit(0);
+
+        // Simulate a bridge txn
+        airdrop(asset, user, _amount);
+
+        vm.prank(user);
+        asset.approve(address(mockEscrow), _amount);
+
+        bytes memory data = abi.encode(user, _amount);
+        uint256 depositCount = polygonZkEVMBridge.depositCount();
+        vm.expectEmit(true, true, true, true, address(polygonZkEVMBridge));
+        emit BridgeEvent(
+            1,
+            l1RollupID,
+            address(mockEscrow),
+            l2RollupID,
+            counterPart,
+            0,
+            data,
+            uint32(depositCount)
+        );
+        vm.prank(user);
+        mockEscrow.bridgeToken(user, _amount, true);
+
+        assertEq(vault.totalAssets(), 0);
+        assertEq(asset.balanceOf(user), 0);
+        assertEq(asset.balanceOf(address(mockEscrow)), _amount);
+        assertEq(vault.balanceOf(address(mockEscrow)), 0);
+
+        vm.prank(governator);
+        vault.set_deposit_limit(_amount);
+
+        airdrop(asset, user, _amount);
+
+        vm.prank(user);
+        asset.approve(address(mockEscrow), _amount);
+
+        vm.prank(user);
+        mockEscrow.bridgeToken(user, _amount, true);
+
+        assertEq(vault.totalAssets(), _amount);
+        assertEq(asset.balanceOf(user), 0);
+        assertEq(asset.balanceOf(address(mockEscrow)), _amount);
+        assertEq(vault.balanceOf(address(mockEscrow)), _amount);
+
+        // Withdraw half
+        uint256 toWithdraw = _amount + 10;
+
+        data = abi.encode(user, toWithdraw);
+
+        vm.prank(address(polygonZkEVMBridge));
+        mockEscrow.onMessageReceived(counterPart, l2RollupID, data);
+
+        assertEq(vault.totalAssets(), _amount - 10);
+        assertEq(asset.balanceOf(user), toWithdraw);
+        assertEq(asset.balanceOf(address(mockEscrow)), 0);
+        assertEq(vault.balanceOf(address(mockEscrow)), _amount - 10);
+    }
+
     function test_bridgeAsset_minimumBuffer(
         uint256 _amount,
         uint256 _minimumBuffer
@@ -183,6 +248,44 @@ contract EscrowTest is Setup {
         assertEq(asset.balanceOf(user), _amount);
         assertEq(asset.balanceOf(address(mockEscrow)), 0);
         assertEq(vault.balanceOf(address(mockEscrow)), 0);
+    }
+
+    function test_rebalance(uint256 _amount, uint256 _minimumBuffer) public {
+        _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
+        _minimumBuffer = bound(_minimumBuffer, 10, maxFuzzAmount);
+        address counterPart = l1Deployer.getL2EscrowAddress(address(asset));
+
+        mockEscrow = deployMockL1Escrow();
+
+        // Simulate a bridge txn
+        mintAndBridge(mockEscrow, user, _amount);
+
+        assertEq(vault.totalAssets(), _amount);
+        assertEq(asset.balanceOf(user), 0);
+        assertEq(asset.balanceOf(address(mockEscrow)), 0);
+        assertEq(vault.balanceOf(address(mockEscrow)), _amount);
+
+        vm.prank(governator);
+        mockEscrow.updateMinimumBuffer(_minimumBuffer);
+
+        uint256 left = _amount > _minimumBuffer ? _amount - _minimumBuffer : 0;
+
+        mockEscrow.rebalance();
+
+        assertEq(vault.totalAssets(), left);
+        assertEq(asset.balanceOf(user), 0);
+        assertEq(asset.balanceOf(address(mockEscrow)), _amount - left);
+        assertEq(vault.balanceOf(address(mockEscrow)), left);
+
+        vm.prank(governator);
+        mockEscrow.updateMinimumBuffer(0);
+
+        mockEscrow.rebalance();
+
+        assertEq(vault.totalAssets(), _amount);
+        assertEq(asset.balanceOf(user), 0);
+        assertEq(asset.balanceOf(address(mockEscrow)), 0);
+        assertEq(vault.balanceOf(address(mockEscrow)), _amount);
     }
 
     function test_bridgeAsset_updateVault(uint256 _amount) public {

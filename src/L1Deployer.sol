@@ -285,11 +285,11 @@ contract L1Deployer is RoleManager {
         );
 
         // Cache to double check we deploy to the right address.
-        address expectedL1Escrow = getL1EscrowAddress(_asset);
+        address expectedL1Escrow = getL1EscrowAddress(_asset, _rollupID);
 
         // Deploy the new escrow and initialize
         _l1Escrow = _create3Deploy(
-            keccak256(abi.encodePacked(bytes("L1Escrow:"), _asset)),
+            keccak256(abi.encodePacked(bytes("L1Escrow:"), _asset, _rollupID)),
             getPositionHolder(ESCROW_IMPLEMENTATION),
             data
         );
