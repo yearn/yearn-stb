@@ -43,6 +43,12 @@ contract L1Deployer is RoleManager {
     }
 
     /*//////////////////////////////////////////////////////////////
+                           POSITION ID'S
+    //////////////////////////////////////////////////////////////*/
+
+    bytes32 public constant L2_FACTORY = keccak256("L2 Factory");
+
+    /*//////////////////////////////////////////////////////////////
                             IMMUTABLE'S
     //////////////////////////////////////////////////////////////*/
 
@@ -193,6 +199,35 @@ contract L1Deployer is RoleManager {
         _chainConfig[_rollupID].escrowManager = _escrowManager;
 
         emit UpdateEscrowManager(_rollupID, _escrowManager);
+    }
+
+    /**
+     * @notice Must be called by the L2's Admin in order to deploy the L2 Deployer contract.
+     */
+    function deployL2Deployer(
+        uint32 _rollupID,
+        address _l2Admin,
+        address _l2RiskManager,
+        address _l2EscrowManager
+    ) external {
+        // Register rollup if not already done. Verifies its a valid rollup ID.
+        if (getRollupContract(_rollupID) == address(0)) {
+            _registerRollup(_rollupID, address(0));
+        }
+
+        // Can only be called by Admin
+        _isRollupAdmin(_rollupID);
+
+        require(_l2Admin != address(0), "ZERO ADDRESS");
+
+        address _l2Factory = getPositionHolder(L2_FACTORY);
+
+        polygonZkEVMBridge.bridgeMessage(
+            _rollupID,
+            _l2Factory,
+            true,
+            abi.encode(_l2Admin, _l2RiskManager, _l2EscrowManager)
+        );
     }
 
     /*//////////////////////////////////////////////////////////////
