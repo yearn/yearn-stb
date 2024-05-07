@@ -42,7 +42,7 @@ contract L2FactoryTest is Setup {
         vm.prank(address(polygonZkEVMBridge));
         l2Factory.onMessageReceived(address(69), l1RollupID, data);
 
-        vm.expectRevert("L2Deployer: Not counterpart network");
+        vm.expectRevert("L2Factory: Not counterpart network");
         vm.prank(address(polygonZkEVMBridge));
         l2Factory.onMessageReceived(address(l1Deployer), l2RollupID, data);
 
