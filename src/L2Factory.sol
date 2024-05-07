@@ -52,7 +52,7 @@ contract L2Factory {
         );
         require(
             ORIGIN_NETWORK_ID == originNetwork,
-            "L2Deployer: Not counterpart network"
+            "L2Factory: Not counterpart network"
         );
 
         (address _l2Admin, address _riskManager, address _escrowManager) = abi
