@@ -11,7 +11,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {DebtAllocatorFactory} from "@vault-periphery/debtAllocators/DebtAllocatorFactory.sol";
 
 /// @title Yearn Stake the Bridge Role Manager.
-contract RoleManager is DeployerBase {
+abstract contract RoleManager is DeployerBase {
     /// @notice Revert message for when a contract has already been deployed.
     error AlreadyDeployed(address _contract);
 
@@ -99,16 +99,8 @@ contract RoleManager is DeployerBase {
         address _registry,
         address _allocatorFactory,
         address _polygonZkEVMBridge,
-        address _l2Deployer,
         address _escrowImplementation
-    )
-        DeployerBase(
-            _polygonZkEVMBridge,
-            address(this),
-            _l2Deployer,
-            _escrowImplementation
-        )
-    {
+    ) DeployerBase(_polygonZkEVMBridge, address(this), _escrowImplementation) {
         chad = _governator;
 
         // Governator gets no roles.

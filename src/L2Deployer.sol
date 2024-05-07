@@ -47,23 +47,16 @@ contract L2Deployer is DeployerBase {
         address _l1Deployer,
         address _riskManager,
         address _escrowManager,
-        address _polygonZkEVMBridge,
-        address _tokenImplementation,
-        address _escrowImplementation,
-        address _converterImplementation
-    )
-        DeployerBase(
-            _polygonZkEVMBridge,
-            _l1Deployer,
-            address(this),
-            _escrowImplementation
-        )
-    {
+        address _polygonZkEVMBridge
+    ) DeployerBase(_polygonZkEVMBridge, _l1Deployer, address(new L2Escrow())) {
         _setPositionHolder(L2_ADMIN, _l2Admin);
         _setPositionHolder(RISK_MANAGER, _riskManager);
         _setPositionHolder(ESCROW_MANAGER, _escrowManager);
-        _setPositionHolder(TOKEN_IMPLEMENTATION, _tokenImplementation);
-        _setPositionHolder(CONVERTER_IMPLEMENTATION, _converterImplementation);
+        _setPositionHolder(TOKEN_IMPLEMENTATION, address(new L2Token()));
+        _setPositionHolder(
+            CONVERTER_IMPLEMENTATION,
+            address(new L2TokenConverter())
+        );
     }
 
     /**
@@ -110,10 +103,24 @@ contract L2Deployer is DeployerBase {
         BridgeData memory bridgeData = abi.decode(data, (BridgeData));
 
         // Get addresses
+<<<<<<< HEAD
         address expectedTokenAddress = getL2TokenAddress(bridgeData.l1Token);
         address expectedEscrowAddress = getL2EscrowAddress(bridgeData.l1Token);
         address expectedConverterAddress = getL2ConverterAddress(
             bridgeData.l1Token
+=======
+        address expectedTokenAddress = getL2TokenAddress(
+            ORIGIN_NETWORK_ID,
+            _l1Token
+        );
+        address expectedEscrowAddress = getL2EscrowAddress(
+            ORIGIN_NETWORK_ID,
+            _l1Token
+        );
+        address expectedConverterAddress = getL2ConverterAddress(
+            ORIGIN_NETWORK_ID,
+            _l1Token
+>>>>>>> feat: non deterministic
         );
 
         // Deploy Token
@@ -281,5 +288,15 @@ contract L2Deployer is DeployerBase {
         returns (address[] memory)
     {
         return bridgedAssets;
+    }
+
+    /**
+     * @notice Get the :2 Deployer for a specific rollup.
+     * @return The L2 Deployer address.
+     */
+    function getL2Deployer(
+        uint32 /*_rollupID*/
+    ) public view virtual override returns (address) {
+        return address(this);
     }
 }

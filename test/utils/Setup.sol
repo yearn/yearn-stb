@@ -9,7 +9,6 @@ import {L2Token} from "@zkevm-stb/L2Token.sol";
 import {L2Escrow} from "@zkevm-stb/L2Escrow.sol";
 import {L2TokenConverter} from "@zkevm-stb/L2TokenConverter.sol";
 
-import {L2Factory} from "../../src/L2Factory.sol";
 import {L1Deployer} from "../../src/L1Deployer.sol";
 import {L2Deployer} from "../../src/L2Deployer.sol";
 import {L1YearnEscrow} from "../../src/L1YearnEscrow.sol";
@@ -67,8 +66,6 @@ contract Setup is ExtendedTest {
     L1YearnEscrow public l1EscrowImpl;
 
     //// L2 Contracts \\\\\
-
-    L2Factory public l2Factory;
 
     L2Token public l2TokenImpl;
 
@@ -145,7 +142,6 @@ contract Setup is ExtendedTest {
             address(registry),
             address(allocatorFactory),
             address(polygonZkEVMBridge),
-            address(0),
             address(l1EscrowImpl)
         );
 
@@ -158,14 +154,6 @@ contract Setup is ExtendedTest {
             address(accountant)
         );
         accountant.setVaultManager(address(l1Deployer));
-        l1Deployer.setPositionHolder(
-            l1Deployer.L2_DEPLOYER(),
-            address(l2Deployer)
-        );
-        l1Deployer.setPositionHolder(
-            l1Deployer.L2_FACTORY(),
-            address(l2Factory)
-        );
         vm.stopPrank();
 
         // Make sure everything works with USDT
@@ -197,25 +185,25 @@ contract Setup is ExtendedTest {
     }
 
     function deployL2Contracts() public virtual {
-        l2Factory = new L2Factory(
+        l2Deployer = new L2Deployer(
+            l2Admin,
             address(l1Deployer),
+            l2RiskManager,
+            l2EscrowManager,
             address(polygonZkEVMBridge)
         );
 
-        l2TokenImpl = L2Token(l2Factory.l2TokenImplementation());
-
-        l2EscrowImpl = L2Escrow(l2Factory.l2EscrowImplementation());
-
-        l2TokenConverterImpl = L2TokenConverter(
-            l2Factory.l2ConverterImplementation()
+        l2TokenImpl = L2Token(
+            l2Deployer.getPositionHolder(l2Deployer.TOKEN_IMPLEMENTATION())
         );
 
-        bytes memory data = abi.encode(l2Admin, l2RiskManager, l2EscrowManager);
+        l2EscrowImpl = L2Escrow(
+            l2Deployer.getPositionHolder(l2Deployer.ESCROW_IMPLEMENTATION())
+        );
 
-        vm.prank(address(polygonZkEVMBridge));
-        l2Factory.onMessageReceived(address(l1Deployer), l1RollupID, data);
-
-        l2Deployer = L2Deployer(l2Factory.l2Deployer());
+        l2TokenConverterImpl = L2TokenConverter(
+            l2Deployer.getPositionHolder(l2Deployer.CONVERTER_IMPLEMENTATION())
+        );
     }
 
     function deployMockVault() public returns (IVault _newVault) {
@@ -266,10 +254,10 @@ contract Setup is ExtendedTest {
                 governator,
                 czar,
                 address(polygonZkEVMBridge),
-                l1Deployer.getL2EscrowAddress(address(asset)),
+                l1Deployer.getL2EscrowAddress(l2RollupID, address(asset)),
                 l2RollupID,
                 address(asset),
-                l1Deployer.getL2TokenAddress(address(asset)),
+                l1Deployer.getL2TokenAddress(l2RollupID, address(asset)),
                 address(vault)
             )
         );
