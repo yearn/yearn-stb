@@ -39,26 +39,6 @@ contract L2DeployerTest is Setup {
         mockEscrow = deployMockL1Escrow();
     }
 
-    // Deploy L2 Deployer using the mock bridge
-    function deployL2Contracts() public override {
-        l2TokenImpl = new L2Token();
-
-        l2EscrowImpl = new L2Escrow();
-
-        l2TokenConverterImpl = new L2TokenConverter();
-
-        l2Deployer = new L2Deployer(
-            l2Admin,
-            address(l1Deployer),
-            l2RiskManager,
-            l2EscrowManager,
-            address(polygonZkEVMBridge),
-            address(l2TokenImpl),
-            address(l2EscrowImpl),
-            address(l2TokenConverterImpl)
-        );
-    }
-
     function test_transferAdmin() public {
         bytes32 L2_ADMIN = l2Deployer.L2_ADMIN();
         bytes32 PENDING_ADMIN = l2Deployer.PENDING_ADMIN();

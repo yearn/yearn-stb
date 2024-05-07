@@ -197,7 +197,10 @@ contract Setup is ExtendedTest {
     }
 
     function deployL2Contracts() public virtual {
-        l2Factory = new L2Factory(address(l1Deployer));
+        l2Factory = new L2Factory(
+            address(l1Deployer),
+            address(polygonZkEVMBridge)
+        );
 
         l2TokenImpl = L2Token(l2Factory.l2TokenImplementation());
 
