@@ -6,25 +6,25 @@ import {L2Token} from "@zkevm-stb/L2Token.sol";
 import {L2Escrow} from "@zkevm-stb/L2Escrow.sol";
 import {L2TokenConverter} from "@zkevm-stb/L2TokenConverter.sol";
 
-/// @title Polygon CDK Stake the Bridge L2 Deployer.
+/// @title Factory for deployment of L2 Contracts.
 contract L2Factory {
     address public l2Deployer;
 
-    address public l1Deployer;
+    address public immutable l1Deployer;
 
-    address public l2TokenImplementation;
+    address public immutable polygonZkEVMBridge;
 
-    address public l2EscrowImplementation;
+    address public immutable l2TokenImplementation;
 
-    address public l2ConverterImplementation;
+    address public immutable l2EscrowImplementation;
+
+    address public immutable l2ConverterImplementation;
 
     uint32 internal constant ORIGIN_NETWORK_ID = 0;
 
-    address public constant polygonZkEVMBridge =
-        0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe;
-
-    constructor(address _l1Deployer) {
+    constructor(address _l1Deployer, address _polygonZkEVMBridge) {
         l1Deployer = _l1Deployer;
+        polygonZkEVMBridge = _polygonZkEVMBridge;
         l2TokenImplementation = address(new L2Token());
         l2EscrowImplementation = address(new L2Escrow());
         l2ConverterImplementation = address(new L2TokenConverter());
