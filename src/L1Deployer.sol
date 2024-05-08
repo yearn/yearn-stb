@@ -306,10 +306,12 @@ contract L1Deployer is RoleManager {
             getPositionHolder(L2_DEPLOYER),
             true,
             abi.encode(
-                _asset,
-                _l1Escrow,
-                ERC20(_asset).name(),
-                ERC20(_asset).symbol()
+                BridgeData({
+                    l1Token: _asset,
+                    l1Escrow: _l1Escrow,
+                    name: ERC20(_asset).name(),
+                    symbol: ERC20(_asset).symbol()
+                })
             )
         );
 

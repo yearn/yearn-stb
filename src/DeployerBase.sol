@@ -11,6 +11,13 @@ import {IPolygonZkEVMBridge} from "./interfaces/Polygon/IPolygonZkEVMBridge.sol"
  * @notice To be inherited by the L1 and L2 Deployer's for common functionality.
  */
 contract DeployerBase is Positions {
+    struct BridgeData {
+        address l1Token;
+        address l1Escrow;
+        string name;
+        string symbol;
+    }
+
     uint32 internal constant ORIGIN_NETWORK_ID = 0;
 
     /*//////////////////////////////////////////////////////////////
