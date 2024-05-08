@@ -107,46 +107,47 @@ contract L2Deployer is DeployerBase {
      */
     function _onMessageReceived(bytes memory data) internal {
         // Decode message data
-        (
-            address _l1Token,
-            address _l1Escrow,
-            string memory _name,
-            string memory _symbol
-        ) = abi.decode(data, (address, address, string, string));
+        BridgeData memory bridgeData = abi.decode(data, (BridgeData));
 
         // Get addresses
-        address expectedTokenAddress = getL2TokenAddress(_l1Token);
-        address expectedEscrowAddress = getL2EscrowAddress(_l1Token);
-        address expectedConverterAddress = getL2ConverterAddress(_l1Token);
+        address expectedTokenAddress = getL2TokenAddress(bridgeData.l1Token);
+        address expectedEscrowAddress = getL2EscrowAddress(bridgeData.l1Token);
+        address expectedConverterAddress = getL2ConverterAddress(
+            bridgeData.l1Token
+        );
 
         // Deploy Token
         address _l2Token = _deployL2Token(
-            _name,
-            _symbol,
-            _l1Token,
+            bridgeData.name,
+            bridgeData.symbol,
+            bridgeData.l1Token,
             expectedEscrowAddress,
             expectedConverterAddress
         );
         require(_l2Token == expectedTokenAddress, "wrong address");
 
         // Deploy escrow
-        address _l2Escrow = _deployL2Escrow(_l1Token, _l2Token, _l1Escrow);
+        address _l2Escrow = _deployL2Escrow(
+            bridgeData.l1Token,
+            _l2Token,
+            bridgeData.l1Escrow
+        );
         require(_l2Escrow == expectedEscrowAddress, "wrong address");
 
         // Deploy Converter
-        address _l2Converter = _deployL2Converter(_l1Token, _l2Token);
+        address _l2Converter = _deployL2Converter(bridgeData.l1Token, _l2Token);
         require(_l2Converter == expectedConverterAddress, "wrong address");
 
         // Store Data
-        tokenInfo[_l1Token] = TokenInfo({
+        tokenInfo[bridgeData.l1Token] = TokenInfo({
             l2Token: _l2Token,
-            l1Escrow: _l1Escrow,
+            l1Escrow: bridgeData.l1Escrow,
             l2Escrow: _l2Escrow,
             l2Converter: _l2Converter
         });
-        bridgedAssets.push(_l1Token);
+        bridgedAssets.push(bridgeData.l1Token);
 
-        emit NewToken(_l1Token, _l2Token, _l2Escrow, _l2Converter);
+        emit NewToken(bridgeData.l1Token, _l2Token, _l2Escrow, _l2Converter);
     }
 
     /**

@@ -23,6 +23,13 @@ contract L2DeployerTest is Setup {
         uint32 depositCount
     );
 
+    struct BridgeData {
+        address l1Token;
+        address l1Escrow;
+        string name;
+        string symbol;
+    }
+
     L1YearnEscrow public mockEscrow;
 
     function setUp() public virtual override {
@@ -62,10 +69,12 @@ contract L2DeployerTest is Setup {
     function test_deployNewContract() public {
         address _asset = address(asset);
         bytes memory data = abi.encode(
-            _asset,
-            mockEscrow,
-            "Pretend Token",
-            "ptTKN"
+            BridgeData({
+                l1Token: address(asset),
+                l1Escrow: address(mockEscrow),
+                name: "Pretend Token",
+                symbol: "ptTKN"
+            })
         );
 
         address expectedTokenAddress = l1Deployer.getL2TokenAddress(_asset);
@@ -114,10 +123,12 @@ contract L2DeployerTest is Setup {
 
     function test_l2TokenSetup() public {
         bytes memory data = abi.encode(
-            address(asset),
-            mockEscrow,
-            "Pretend Token",
-            "ptTKN"
+            BridgeData({
+                l1Token: address(asset),
+                l1Escrow: address(mockEscrow),
+                name: "Pretend Token",
+                symbol: "ptTKN"
+            })
         );
 
         address expectedTokenAddress = l1Deployer.getL2TokenAddress(
@@ -186,10 +197,12 @@ contract L2DeployerTest is Setup {
     function test_l2EscrowSetup() public {
         // Use mock bridge
         bytes memory data = abi.encode(
-            address(asset),
-            mockEscrow,
-            "Pretend Token",
-            "ptTKN"
+            BridgeData({
+                l1Token: address(asset),
+                l1Escrow: address(mockEscrow),
+                name: "Pretend Token",
+                symbol: "ptTKN"
+            })
         );
 
         address expectedEscrowAddress = l1Deployer.getL2EscrowAddress(
@@ -255,10 +268,12 @@ contract L2DeployerTest is Setup {
     function test_l2EConverterSetup() public {
         // Use mock bridge
         bytes memory data = abi.encode(
-            address(asset),
-            mockEscrow,
-            "Pretend Token",
-            "ptTKN"
+            BridgeData({
+                l1Token: address(asset),
+                l1Escrow: address(mockEscrow),
+                name: "Pretend Token",
+                symbol: "ptTKN"
+            })
         );
 
         address expectedConverterAddress = l1Deployer.getL2ConverterAddress(
