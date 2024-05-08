@@ -127,6 +127,7 @@ abstract contract DeployerBase is Positions {
         address deployer,
         bytes32 salt
     ) internal view virtual returns (address) {
+        if (deployer == address(0)) return address(0);
         return CREATE3.getDeployed(deployer, salt);
     }
 

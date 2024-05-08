@@ -102,25 +102,15 @@ contract L2Deployer is DeployerBase {
         // Decode message data
         BridgeData memory bridgeData = abi.decode(data, (BridgeData));
 
-        // Get addresses
-<<<<<<< HEAD
-        address expectedTokenAddress = getL2TokenAddress(bridgeData.l1Token);
-        address expectedEscrowAddress = getL2EscrowAddress(bridgeData.l1Token);
-        address expectedConverterAddress = getL2ConverterAddress(
-            bridgeData.l1Token
-=======
-        address expectedTokenAddress = getL2TokenAddress(
-            ORIGIN_NETWORK_ID,
-            _l1Token
-        );
+        // Get addresses. Rollup ID is not used so pass in 0.
+        address expectedTokenAddress = getL2TokenAddress(0, bridgeData.l1Token);
         address expectedEscrowAddress = getL2EscrowAddress(
-            ORIGIN_NETWORK_ID,
-            _l1Token
+            0,
+            bridgeData.l1Token
         );
         address expectedConverterAddress = getL2ConverterAddress(
-            ORIGIN_NETWORK_ID,
-            _l1Token
->>>>>>> feat: non deterministic
+            0,
+            bridgeData.l1Token
         );
 
         // Deploy Token

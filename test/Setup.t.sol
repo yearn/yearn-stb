@@ -102,7 +102,7 @@ contract SetupTest is Setup {
             l2Deployer.getPositionHolder(l2Deployer.L1_DEPLOYER()),
             address(l1Deployer)
         );
-        assertEq(l2Deployer.getL2Deployer(l2RollupID), address(0));
+        assertEq(l2Deployer.getL2Deployer(l2RollupID), address(l2Deployer));
         assertEq(
             l2Deployer.getPositionHolder(l2Deployer.ESCROW_IMPLEMENTATION()),
             address(l2EscrowImpl)
