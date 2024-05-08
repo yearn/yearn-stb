@@ -11,6 +11,7 @@ import {IPolygonZkEVMBridge} from "./interfaces/Polygon/IPolygonZkEVMBridge.sol"
  * @notice To be inherited by the L1 and L2 Deployer's for common functionality.
  */
 abstract contract DeployerBase is Positions {
+    /// @notice Data to send from L1 to L2 after escrow deployment.
     struct BridgeData {
         address l1Token;
         address l1Escrow;
@@ -18,6 +19,7 @@ abstract contract DeployerBase is Positions {
         string symbol;
     }
 
+    /// @notice ID to use for the L1
     uint32 internal constant ORIGIN_NETWORK_ID = 0;
 
     /*//////////////////////////////////////////////////////////////

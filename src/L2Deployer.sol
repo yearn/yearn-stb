@@ -7,7 +7,7 @@ import {L2Escrow} from "@zkevm-stb/L2Escrow.sol";
 import {L2TokenConverter} from "@zkevm-stb/L2TokenConverter.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-/// @title Polygon CDK Stake the Bridge L2 Deployer.
+/// @title Polygon Stake the Bridge L2 Deployer.
 contract L2Deployer is DeployerBase {
     event NewToken(
         address indexed l1Token,
