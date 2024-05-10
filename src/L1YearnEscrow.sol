@@ -96,10 +96,10 @@ contract L1YearnEscrow is L1Escrow {
             _wrappedTokenAddress
         );
 
-        VaultStorage storage $ = _getVaultStorage();
         // Max approve the vault
         originTokenAddress().forceApprove(_vaultAddress, 2 ** 256 - 1);
         // Set the vault variable
+        VaultStorage storage $ = _getVaultStorage();
         $.vaultAddress = IVault(_vaultAddress);
     }
 
