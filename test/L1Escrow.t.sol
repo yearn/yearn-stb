@@ -10,7 +10,10 @@ contract EscrowTest is Setup {
 
     function setUp() public virtual override {
         super.setUp();
-        l2TokenAddress = l1Deployer.getL2TokenAddress(address(asset));
+        l2TokenAddress = l1Deployer.getL2TokenAddress(
+            l2RollupID,
+            address(asset)
+        );
         vault = deployMockVault();
     }
 
@@ -74,7 +77,10 @@ contract EscrowTest is Setup {
 
     function test_bridgeAsset(uint256 _amount) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
-        address counterPart = l1Deployer.getL2EscrowAddress(address(asset));
+        address counterPart = l1Deployer.getL2EscrowAddress(
+            l2RollupID,
+            address(asset)
+        );
         mockEscrow = deployMockL1Escrow();
 
         // Simulate a bridge txn
@@ -147,7 +153,10 @@ contract EscrowTest is Setup {
 
     function test_bridgeAsset_maxDepositLimit(uint256 _amount) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
-        address counterPart = l1Deployer.getL2EscrowAddress(address(asset));
+        address counterPart = l1Deployer.getL2EscrowAddress(
+            l2RollupID,
+            address(asset)
+        );
         mockEscrow = deployMockL1Escrow();
 
         vm.prank(governator);
@@ -216,7 +225,10 @@ contract EscrowTest is Setup {
     ) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
         _minimumBuffer = bound(_minimumBuffer, 10, maxFuzzAmount);
-        address counterPart = l1Deployer.getL2EscrowAddress(address(asset));
+        address counterPart = l1Deployer.getL2EscrowAddress(
+            l2RollupID,
+            address(asset)
+        );
 
         mockEscrow = deployMockL1Escrow();
 
@@ -253,7 +265,10 @@ contract EscrowTest is Setup {
     function test_rebalance(uint256 _amount, uint256 _minimumBuffer) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
         _minimumBuffer = bound(_minimumBuffer, 10, maxFuzzAmount);
-        address counterPart = l1Deployer.getL2EscrowAddress(address(asset));
+        address counterPart = l1Deployer.getL2EscrowAddress(
+            l2RollupID,
+            address(asset)
+        );
 
         mockEscrow = deployMockL1Escrow();
 
@@ -290,7 +305,10 @@ contract EscrowTest is Setup {
 
     function test_bridgeAsset_updateVault(uint256 _amount) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
-        address counterPart = l1Deployer.getL2EscrowAddress(address(asset));
+        address counterPart = l1Deployer.getL2EscrowAddress(
+            l2RollupID,
+            address(asset)
+        );
 
         mockEscrow = deployMockL1Escrow();
 
@@ -345,7 +363,10 @@ contract EscrowTest is Setup {
 
     function test_managerWithdraw(uint256 _amount) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
-        address counterPart = l1Deployer.getL2EscrowAddress(address(asset));
+        address counterPart = l1Deployer.getL2EscrowAddress(
+            l2RollupID,
+            address(asset)
+        );
 
         mockEscrow = deployMockL1Escrow();
 
@@ -390,7 +411,10 @@ contract EscrowTest is Setup {
 
     function test_illiquidWithdraw(uint256 _amount) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
-        address counterPart = l1Deployer.getL2EscrowAddress(address(asset));
+        address counterPart = l1Deployer.getL2EscrowAddress(
+            l2RollupID,
+            address(asset)
+        );
 
         mockEscrow = deployMockL1Escrow();
 
@@ -431,7 +455,10 @@ contract EscrowTest is Setup {
     ) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
         _minimumBuffer = bound(_minimumBuffer, 10, _amount / 2);
-        address counterPart = l1Deployer.getL2EscrowAddress(address(asset));
+        address counterPart = l1Deployer.getL2EscrowAddress(
+            l2RollupID,
+            address(asset)
+        );
 
         mockEscrow = deployMockL1Escrow();
 

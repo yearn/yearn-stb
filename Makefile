@@ -21,6 +21,7 @@ trace-test  :; forge test -vvv --match-test $(test) --fork-url ${FORK_URL}
 
 script	:; forge script script/${script} --rpc-url ${FORK_URL} --broadcast -vvv
 
+coverage  :; forge coverage -vv --fork-url ${FORK_URL}
 snapshot :; forge snapshot --fork-url ${FORK_URL}
 diff :; forge snapshot --diff --fork-url ${FORK_URL}
 clean  :; forge clean

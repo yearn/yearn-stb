@@ -7,7 +7,7 @@ import {L2Escrow} from "@zkevm-stb/L2Escrow.sol";
 import {L2TokenConverter} from "@zkevm-stb/L2TokenConverter.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-/// @title Polygon CDK Stake the Bridge L2 Deployer.
+/// @title Polygon Stake the Bridge L2 Deployer.
 contract L2Deployer is DeployerBase {
     event NewToken(
         address indexed l1Token,
@@ -47,23 +47,16 @@ contract L2Deployer is DeployerBase {
         address _l1Deployer,
         address _riskManager,
         address _escrowManager,
-        address _polygonZkEVMBridge,
-        address _tokenImplementation,
-        address _escrowImplementation,
-        address _converterImplementation
-    )
-        DeployerBase(
-            _polygonZkEVMBridge,
-            _l1Deployer,
-            address(this),
-            _escrowImplementation
-        )
-    {
+        address _polygonZkEVMBridge
+    ) DeployerBase(_polygonZkEVMBridge, _l1Deployer, address(new L2Escrow())) {
         _setPositionHolder(L2_ADMIN, _l2Admin);
         _setPositionHolder(RISK_MANAGER, _riskManager);
         _setPositionHolder(ESCROW_MANAGER, _escrowManager);
-        _setPositionHolder(TOKEN_IMPLEMENTATION, _tokenImplementation);
-        _setPositionHolder(CONVERTER_IMPLEMENTATION, _converterImplementation);
+        _setPositionHolder(TOKEN_IMPLEMENTATION, address(new L2Token()));
+        _setPositionHolder(
+            CONVERTER_IMPLEMENTATION,
+            address(new L2TokenConverter())
+        );
     }
 
     /**
@@ -109,10 +102,14 @@ contract L2Deployer is DeployerBase {
         // Decode message data
         BridgeData memory bridgeData = abi.decode(data, (BridgeData));
 
-        // Get addresses
-        address expectedTokenAddress = getL2TokenAddress(bridgeData.l1Token);
-        address expectedEscrowAddress = getL2EscrowAddress(bridgeData.l1Token);
+        // Get addresses. Rollup ID is not used so pass in 0.
+        address expectedTokenAddress = getL2TokenAddress(0, bridgeData.l1Token);
+        address expectedEscrowAddress = getL2EscrowAddress(
+            0,
+            bridgeData.l1Token
+        );
         address expectedConverterAddress = getL2ConverterAddress(
+            0,
             bridgeData.l1Token
         );
 
@@ -281,5 +278,15 @@ contract L2Deployer is DeployerBase {
         returns (address[] memory)
     {
         return bridgedAssets;
+    }
+
+    /**
+     * @notice Get the :2 Deployer for a specific rollup.
+     * @return The L2 Deployer address.
+     */
+    function getL2Deployer(
+        uint32 /*_rollupID*/
+    ) public view virtual override returns (address) {
+        return address(this);
     }
 }

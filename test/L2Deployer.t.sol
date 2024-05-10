@@ -2,6 +2,7 @@
 pragma solidity >=0.8.18;
 
 import {MockBridge} from "./mocks/MockBridge.sol";
+import {IPolygonRollupManager, IPolygonRollupContract} from "../src/interfaces/Polygon/IPolygonRollupManager.sol";
 import {Setup, console, L2Deployer, L1YearnEscrow, L2Token, L2Escrow, L2TokenConverter, IPolygonZkEVMBridge} from "./utils/Setup.sol";
 
 contract L2DeployerTest is Setup {
@@ -36,6 +37,16 @@ contract L2DeployerTest is Setup {
         // Use mock bridge.
         polygonZkEVMBridge = IPolygonZkEVMBridge(address(new MockBridge()));
         super.setUp();
+        // Register Rollup with L1 Deployer
+        address rollupAdmin = address(
+            IPolygonRollupManager(polygonZkEVMBridge.polygonRollupManager())
+                .rollupIDToRollupData(l2RollupID)
+                .rollupContract
+                .admin()
+        );
+
+        vm.prank(rollupAdmin);
+        l1Deployer.registerRollup(l2RollupID, rollupAdmin, address(l2Deployer));
         mockEscrow = deployMockL1Escrow();
     }
 
@@ -77,9 +88,16 @@ contract L2DeployerTest is Setup {
             })
         );
 
-        address expectedTokenAddress = l1Deployer.getL2TokenAddress(_asset);
-        address expectedEscrowAddress = l1Deployer.getL2EscrowAddress(_asset);
+        address expectedTokenAddress = l1Deployer.getL2TokenAddress(
+            l2RollupID,
+            _asset
+        );
+        address expectedEscrowAddress = l1Deployer.getL2EscrowAddress(
+            l2RollupID,
+            _asset
+        );
         address expectedConverterAddress = l1Deployer.getL2ConverterAddress(
+            l2RollupID,
             _asset
         );
 
@@ -132,6 +150,7 @@ contract L2DeployerTest is Setup {
         );
 
         address expectedTokenAddress = l1Deployer.getL2TokenAddress(
+            l2RollupID,
             address(asset)
         );
 
@@ -206,6 +225,7 @@ contract L2DeployerTest is Setup {
         );
 
         address expectedEscrowAddress = l1Deployer.getL2EscrowAddress(
+            l2RollupID,
             address(asset)
         );
 
@@ -277,6 +297,7 @@ contract L2DeployerTest is Setup {
         );
 
         address expectedConverterAddress = l1Deployer.getL2ConverterAddress(
+            l2RollupID,
             address(asset)
         );
 

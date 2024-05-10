@@ -12,7 +12,8 @@ contract L1Deployer is RoleManager {
     event RegisteredNewRollup(
         uint32 indexed rollupID,
         address indexed rollupContract,
-        address indexed escrowManager
+        address indexed escrowManager,
+        address l2Deployer
     );
 
     event UpdateEscrowManager(
@@ -20,10 +21,13 @@ contract L1Deployer is RoleManager {
         address indexed escrowManager
     );
 
+    event UpdateL2Deployer(uint32 indexed rollupID, address indexed l2Deployer);
+
     event NewL1Escrow(uint32 indexed rollupID, address indexed l1Escrow);
 
     struct ChainConfig {
         IPolygonRollupContract rollupContract;
+        address l2Deployer;
         address escrowManager;
         mapping(address => address) escrows; // asset => escrow contract
     }
@@ -34,12 +38,23 @@ contract L1Deployer is RoleManager {
         _;
     }
 
+    /// @notice Assure that the Rollup has been registered.
+    modifier isRegistered(uint32 _rollupID) {
+        _isRegistered(_rollupID);
+        _;
+    }
+
     /// @notice Check if the msg sender is governance or the specified position holder.
     function _isRollupAdmin(uint32 _rollupID) internal view virtual {
         require(
             msg.sender == _chainConfig[_rollupID].rollupContract.admin(),
             "!admin"
         );
+    }
+
+    /// @notice Check if the Rollup ID has been registered.
+    function _isRegistered(uint32 _rollupID) internal view virtual {
+        require(getRollupContract(_rollupID) != address(0), "!registered");
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -64,7 +79,6 @@ contract L1Deployer is RoleManager {
         address _registry,
         address _allocatorFactory,
         address _polygonZkEVMBridge,
-        address _l2Deployer,
         address _escrowImplementation
     )
         RoleManager(
@@ -76,7 +90,6 @@ contract L1Deployer is RoleManager {
             _registry,
             _allocatorFactory,
             _polygonZkEVMBridge,
-            _l2Deployer,
             _escrowImplementation
         )
     {
@@ -107,12 +120,12 @@ contract L1Deployer is RoleManager {
     function newEscrow(
         uint32 _rollupID,
         address _asset
-    ) external virtual returns (address _l1Escrow, address _vault) {
-        // Register rollup if not already done. Verifies its a valid rollup ID.
-        if (getRollupContract(_rollupID) == address(0)) {
-            _registerRollup(_rollupID, address(0));
-        }
-
+    )
+        external
+        virtual
+        isRegistered(_rollupID)
+        returns (address _l1Escrow, address _vault)
+    {
         // Verify that an escrow is not already deployed for that chain.
         _l1Escrow = getEscrow(_rollupID, _asset);
         if (_l1Escrow != address(0)) revert AlreadyDeployed(_l1Escrow);
@@ -135,48 +148,35 @@ contract L1Deployer is RoleManager {
 
     /**
      * @notice Register a rollup with this deployer contract.
-     * @dev Only a rollups Admin can set the `_escrowManager`
+     * @dev Only a rollups Admin can set the `_l1EscrowManager`
      * @param _rollupID ID for the rollup to register
-     * @param _escrowManager Address to set as the L1 Manager.
+     * @param _l1EscrowManager Address to set as the L1 Manager.
+     * @param _l2Deployer Rollup Specific L2 Deployer
      */
     function registerRollup(
         uint32 _rollupID,
-        address _escrowManager
+        address _l1EscrowManager,
+        address _l2Deployer
     ) external virtual {
         require(getRollupContract(_rollupID) == address(0), "registered");
-        _registerRollup(_rollupID, _escrowManager);
-    }
+        require(_l2Deployer != address(0), "ZERO ADDRESS");
 
-    /**
-     * @dev Registers a new rollup with the Deployer.
-     *   This is called either manually or during the first {newEscrow} call.
-     */
-    function _registerRollup(
-        uint32 _rollupID,
-        address _escrowManager
-    ) internal virtual {
         IPolygonRollupContract _rollupContract = rollupManager
             .rollupIDToRollupData(_rollupID)
             .rollupContract;
 
-        // Checks the rollup ID is valid
-        address admin = _rollupContract.admin();
-        // If the caller is not the rollup Admin.
-        if (
-            msg.sender != _rollupContract.admin() ||
-            _escrowManager == address(0)
-        ) {
-            // Default the manager to be the admin
-            _escrowManager = admin;
-        }
+        // Checks the rollup ID is valid and the caller is admin.
+        require(msg.sender == _rollupContract.admin(), "!admin");
 
         _chainConfig[_rollupID].rollupContract = _rollupContract;
-        _chainConfig[_rollupID].escrowManager = _escrowManager;
+        _chainConfig[_rollupID].escrowManager = _l1EscrowManager;
+        _chainConfig[_rollupID].l2Deployer = _l2Deployer;
 
         emit RegisteredNewRollup(
             _rollupID,
             address(_rollupContract),
-            _escrowManager
+            _l1EscrowManager,
+            _l2Deployer
         );
     }
 
@@ -193,6 +193,19 @@ contract L1Deployer is RoleManager {
         _chainConfig[_rollupID].escrowManager = _escrowManager;
 
         emit UpdateEscrowManager(_rollupID, _escrowManager);
+    }
+
+    /**
+     * @notice Must be called by the L2's Admin in order to deploy the L2 Deployer contract.
+     */
+    function updateL2Deployer(
+        uint32 _rollupID,
+        address _l2Deployer
+    ) external virtual onlyRollupAdmin(_rollupID) {
+        require(_l2Deployer != address(0), "ZERO ADDRESS");
+        _chainConfig[_rollupID].l2Deployer = _l2Deployer;
+
+        emit UpdateL2Deployer(_rollupID, _l2Deployer);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -276,20 +289,20 @@ contract L1Deployer is RoleManager {
                 chainConfig_.rollupContract.admin(),
                 chainConfig_.escrowManager,
                 address(polygonZkEVMBridge),
-                getL2EscrowAddress(_asset),
+                getL2EscrowAddress(_rollupID, _asset),
                 _rollupID,
                 _asset,
-                getL2TokenAddress(_asset),
+                getL2TokenAddress(_rollupID, _asset),
                 _vault
             )
         );
 
         // Cache to double check we deploy to the right address.
-        address expectedL1Escrow = getL1EscrowAddress(_asset, _rollupID);
+        address expectedL1Escrow = getL1EscrowAddress(_rollupID, _asset);
 
         // Deploy the new escrow and initialize
         _l1Escrow = _create3Deploy(
-            keccak256(abi.encodePacked(bytes("L1Escrow:"), _asset, _rollupID)),
+            keccak256(abi.encodePacked(bytes("L1Escrow:"), _rollupID, _asset)),
             getPositionHolder(ESCROW_IMPLEMENTATION),
             data
         );
@@ -303,7 +316,7 @@ contract L1Deployer is RoleManager {
         // Send Message to Bridge for L2
         polygonZkEVMBridge.bridgeMessage(
             _rollupID,
-            getPositionHolder(L2_DEPLOYER),
+            chainConfig_.l2Deployer,
             true,
             abi.encode(
                 BridgeData({
@@ -323,11 +336,24 @@ contract L1Deployer is RoleManager {
     //////////////////////////////////////////////////////////////*/
 
     /**
+     * @notice Get the :2 Deployer for a specific rollup.
+     * @param _rollupID Rollup ID for the L2.
+     * @return The L2 Deployer address.
+     */
+    function getL2Deployer(
+        uint32 _rollupID
+    ) public view virtual override returns (address) {
+        return _chainConfig[_rollupID].l2Deployer;
+    }
+
+    /**
      * @dev Returns the address of the rollup contract associated with the specified rollup ID.
      * @param _rollupID The ID of the rollup.
      * @return The address of the rollup contract.
      */
-    function getRollupContract(uint32 _rollupID) public view returns (address) {
+    function getRollupContract(
+        uint32 _rollupID
+    ) public view virtual returns (address) {
         return address(_chainConfig[_rollupID].rollupContract);
     }
 
@@ -336,7 +362,9 @@ contract L1Deployer is RoleManager {
      * @param _rollupID The ID of the rollup.
      * @return The address of the escrow manager.
      */
-    function getEscrowManager(uint32 _rollupID) public view returns (address) {
+    function getEscrowManager(
+        uint32 _rollupID
+    ) public view virtual returns (address) {
         return _chainConfig[_rollupID].escrowManager;
     }
 

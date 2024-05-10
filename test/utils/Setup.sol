@@ -142,26 +142,10 @@ contract Setup is ExtendedTest {
             address(registry),
             address(allocatorFactory),
             address(polygonZkEVMBridge),
-            address(0),
             address(l1EscrowImpl)
         );
 
-        l2TokenImpl = new L2Token();
-
-        l2EscrowImpl = new L2Escrow();
-
-        l2TokenConverterImpl = new L2TokenConverter();
-
-        l2Deployer = new L2Deployer(
-            l2Admin,
-            address(l1Deployer),
-            l2RiskManager,
-            l2EscrowManager,
-            address(polygonZkEVMBridge),
-            address(l2TokenImpl),
-            address(l2EscrowImpl),
-            address(l2TokenConverterImpl)
-        );
+        deployL2Contracts();
 
         vm.startPrank(governator);
         registry.setEndorser(address(l1Deployer), true);
@@ -170,10 +154,6 @@ contract Setup is ExtendedTest {
             address(accountant)
         );
         accountant.setVaultManager(address(l1Deployer));
-        l1Deployer.setPositionHolder(
-            l1Deployer.L2_DEPLOYER(),
-            address(l2Deployer)
-        );
         vm.stopPrank();
 
         // Make sure everything works with USDT
@@ -202,6 +182,28 @@ contract Setup is ExtendedTest {
         vm.label(address(polygonZkEVMBridge), "Polygon Bridge");
         vm.label(address(allocatorFactory), "Allocator Factory");
         vm.label(address(l2TokenConverterImpl), "L2 Converter IMPL");
+    }
+
+    function deployL2Contracts() public virtual {
+        l2Deployer = new L2Deployer(
+            l2Admin,
+            address(l1Deployer),
+            l2RiskManager,
+            l2EscrowManager,
+            address(polygonZkEVMBridge)
+        );
+
+        l2TokenImpl = L2Token(
+            l2Deployer.getPositionHolder(l2Deployer.TOKEN_IMPLEMENTATION())
+        );
+
+        l2EscrowImpl = L2Escrow(
+            l2Deployer.getPositionHolder(l2Deployer.ESCROW_IMPLEMENTATION())
+        );
+
+        l2TokenConverterImpl = L2TokenConverter(
+            l2Deployer.getPositionHolder(l2Deployer.CONVERTER_IMPLEMENTATION())
+        );
     }
 
     function deployMockVault() public returns (IVault _newVault) {
@@ -252,10 +254,10 @@ contract Setup is ExtendedTest {
                 governator,
                 czar,
                 address(polygonZkEVMBridge),
-                l1Deployer.getL2EscrowAddress(address(asset)),
+                l1Deployer.getL2EscrowAddress(l2RollupID, address(asset)),
                 l2RollupID,
                 address(asset),
-                l1Deployer.getL2TokenAddress(address(asset)),
+                l1Deployer.getL2TokenAddress(l2RollupID, address(asset)),
                 address(vault)
             )
         );
