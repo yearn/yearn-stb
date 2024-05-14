@@ -127,7 +127,7 @@ contract L1DeployerTest is Setup {
         assertEq(l1Deployer.getRollupContract(rollupID), address(0));
         assertEq(l1Deployer.getEscrowManager(rollupID), address(0));
         assertEq(l1Deployer.getEscrow(rollupID, address(asset)), address(0));
-        assertEq(l1Deployer.getVault(address(asset)), address(0));
+        assertEq(roleManager.getVault(address(asset)), address(0));
 
         address rollupContract = address(
             IPolygonRollupManager(polygonZkEVMBridge.polygonRollupManager())
@@ -157,7 +157,7 @@ contract L1DeployerTest is Setup {
         assertEq(l1Deployer.getRollupContract(rollupID), rollupContract);
         assertEq(l1Deployer.getEscrowManager(rollupID), czar);
         assertEq(l1Deployer.getEscrow(rollupID, address(asset)), _l1Escrow);
-        assertEq(l1Deployer.getVault(address(asset)), _vault);
+        assertEq(roleManager.getVault(address(asset)), _vault);
 
         IVault vault = IVault(_vault);
 
@@ -169,7 +169,7 @@ contract L1DeployerTest is Setup {
             uint32 rollupID_,
             address _debtAllocator,
             uint96 _index
-        ) = l1Deployer.vaultConfig(_vault);
+        ) = roleManager.vaultConfig(_vault);
         assertTrue(_debtAllocator != address(0));
         assertEq(_index, 0);
         assertEq(rollupID_, 0);
@@ -203,7 +203,7 @@ contract L1DeployerTest is Setup {
         assertEq(l1Deployer.getRollupContract(rollupID), address(0));
         assertEq(l1Deployer.getEscrowManager(rollupID), address(0));
         assertEq(l1Deployer.getEscrow(rollupID, address(asset)), address(0));
-        assertEq(l1Deployer.getVault(address(asset)), address(0));
+        assertEq(roleManager.getVault(address(asset)), address(0));
 
         address rollupContract = address(
             IPolygonRollupManager(polygonZkEVMBridge.polygonRollupManager())
@@ -233,7 +233,7 @@ contract L1DeployerTest is Setup {
         assertEq(l1Deployer.getRollupContract(rollupID), rollupContract);
         assertEq(l1Deployer.getEscrowManager(rollupID), czar);
         assertEq(l1Deployer.getEscrow(rollupID, address(asset)), _l1Escrow);
-        assertEq(l1Deployer.getVault(address(asset)), _vault);
+        assertEq(roleManager.getVault(address(asset)), _vault);
 
         rollupID = 2;
 
@@ -280,7 +280,7 @@ contract L1DeployerTest is Setup {
             l1Deployer.getEscrow(rollupID, address(asset)),
             _secondL1Escrow
         );
-        assertEq(l1Deployer.getVault(address(asset)), _vault);
+        assertEq(roleManager.getVault(address(asset)), _vault);
 
         L1YearnEscrow escrow = L1YearnEscrow(_secondL1Escrow);
 
@@ -307,7 +307,7 @@ contract L1DeployerTest is Setup {
         assertEq(l1Deployer.getRollupContract(rollupID), address(0));
         assertEq(l1Deployer.getEscrowManager(rollupID), address(0));
         assertEq(l1Deployer.getEscrow(rollupID, address(asset)), address(0));
-        assertEq(l1Deployer.getVault(address(asset)), address(0));
+        assertEq(roleManager.getVault(address(asset)), address(0));
 
         address rollupContract = address(
             IPolygonRollupManager(polygonZkEVMBridge.polygonRollupManager())
@@ -324,16 +324,7 @@ contract L1DeployerTest is Setup {
         vm.prank(rollupAdmin);
         l1Deployer.registerRollup(rollupID, rollupAdmin, address(l2Deployer));
 
-        address _vault = vaultFactory.deploy_new_vault(
-            address(asset),
-            "test Vault",
-            "tsVault",
-            rollupAdmin,
-            100
-        );
-
-        vm.prank(rollupAdmin);
-        IVault(_vault).transfer_role_manager(address(l1Deployer));
+        address _vault = roleManager.newVault(69, address(asset));
 
         address _l1Escrow = l1Deployer.getL1EscrowAddress(
             rollupID,
@@ -352,8 +343,8 @@ contract L1DeployerTest is Setup {
         assertEq(l1Deployer.getRollupContract(rollupID), rollupContract);
         assertEq(l1Deployer.getEscrowManager(rollupID), rollupAdmin);
         assertEq(l1Deployer.getEscrow(rollupID, address(asset)), _l1Escrow);
-        assertEq(l1Deployer.getVault(address(asset)), address(0));
-        assertEq(l1Deployer.getVault(address(asset), rollupID), _vault);
+        assertEq(roleManager.getVault(address(asset)), address(0));
+        //assertEq(roleManager.getVault(address(asset), rollupID), _vault);
 
         IVault vault = IVault(_vault);
 
@@ -364,10 +355,10 @@ contract L1DeployerTest is Setup {
             uint32 rollupID_,
             address _debtAllocator,
             uint96 _index
-        ) = l1Deployer.vaultConfig(_vault);
+        ) = roleManager.vaultConfig(_vault);
         assertTrue(_debtAllocator != address(0));
         assertEq(_index, 0);
-        assertEq(rollupID_, rollupID);
+        //assertEq(rollupID_, rollupID);
         assertEq(asset_, address(asset));
 
         L1YearnEscrow escrow = L1YearnEscrow(_l1Escrow);

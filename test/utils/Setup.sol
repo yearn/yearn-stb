@@ -11,6 +11,7 @@ import {L2TokenConverter} from "@zkevm-stb/L2TokenConverter.sol";
 
 import {L1Deployer} from "../../src/L1Deployer.sol";
 import {L2Deployer} from "../../src/L2Deployer.sol";
+import {RoleManager} from "../../src/RoleManager.sol";
 import {L1YearnEscrow} from "../../src/L1YearnEscrow.sol";
 
 import {Roles} from "@yearn-vaults/interfaces/Roles.sol";
@@ -59,6 +60,8 @@ contract Setup is ExtendedTest {
         IAccountantFactory(0xF728f839796a399ACc2823c1e5591F05a31c32d1);
 
     /// Core Contracts \\\\
+
+    RoleManager public roleManager;
 
     ///// L1 Contracts \\\\
     L1Deployer public l1Deployer;
@@ -131,29 +134,34 @@ contract Setup is ExtendedTest {
             )
         );
 
-        l1EscrowImpl = new L1YearnEscrow();
-
-        l1Deployer = new L1Deployer(
+        roleManager = new RoleManager(
             governator,
             czar,
             management,
             emergencyAdmin,
             keeper,
             address(registry),
-            address(allocatorFactory),
+            address(allocatorFactory)
+        );
+
+        l1Deployer = new L1Deployer(
             address(polygonZkEVMBridge),
-            address(l1EscrowImpl)
+            address(roleManager)
+        );
+
+        l1EscrowImpl = L1YearnEscrow(
+            l1Deployer.getPositionHolder(l1Deployer.ESCROW_IMPLEMENTATION())
         );
 
         deployL2Contracts();
 
         vm.startPrank(governator);
-        registry.setEndorser(address(l1Deployer), true);
-        l1Deployer.setPositionHolder(
-            l1Deployer.ACCOUNTANT(),
+        registry.setEndorser(address(roleManager), true);
+        roleManager.setPositionHolder(
+            roleManager.ACCOUNTANT(),
             address(accountant)
         );
-        accountant.setVaultManager(address(l1Deployer));
+        accountant.setVaultManager(address(roleManager));
         vm.stopPrank();
 
         // Make sure everything works with USDT

@@ -27,6 +27,7 @@ contract SetupTest is Setup {
         assertNeq(address(accountant), address(0));
         assertNeq(address(allocatorFactory), address(0));
         assertNeq(address(l1Deployer), address(0));
+        assertNeq(address(roleManager), address(0));
         assertNeq(address(l1EscrowImpl), address(0));
         assertNeq(address(l2Deployer), address(0));
         assertNeq(address(l2EscrowImpl), address(0));
@@ -35,56 +36,63 @@ contract SetupTest is Setup {
     }
 
     // Check the L1 deployer is setup correctly and working.
-    function test_l1DeployerSetup() public {
-        assertEq(l1Deployer.name(), "L1 Stake the Bridge Deployer");
+    function test_roleManagerSetup() public {
+        assertEq(roleManager.name(), "Stake the Bridge Role Manager");
         assertEq(
-            l1Deployer.getPositionHolder(l1Deployer.GOVERNATOR()),
+            roleManager.getPositionHolder(roleManager.GOVERNATOR()),
             governator
         );
-        assertEq(l1Deployer.getPositionHolder(l1Deployer.CZAR()), czar);
-        assertEq(l1Deployer.getPositionRoles(l1Deployer.CZAR()), Roles.ALL);
+        assertEq(roleManager.getPositionHolder(roleManager.CZAR()), czar);
+        assertEq(roleManager.getPositionRoles(roleManager.CZAR()), Roles.ALL);
         assertEq(
-            l1Deployer.getPositionHolder(l1Deployer.MANAGEMENT()),
+            roleManager.getPositionHolder(roleManager.MANAGEMENT()),
             management
         );
         assertEq(
-            l1Deployer.getPositionRoles(l1Deployer.MANAGEMENT()),
+            roleManager.getPositionRoles(roleManager.MANAGEMENT()),
             managementRoles
         );
-        assertEq(l1Deployer.getPositionHolder(l1Deployer.KEEPER()), keeper);
-        assertEq(l1Deployer.getPositionRoles(l1Deployer.KEEPER()), keeperRoles);
+        assertEq(roleManager.getPositionHolder(roleManager.KEEPER()), keeper);
         assertEq(
-            l1Deployer.getPositionHolder(l1Deployer.EMERGENCY_ADMIN()),
+            roleManager.getPositionRoles(roleManager.KEEPER()),
+            keeperRoles
+        );
+        assertEq(
+            roleManager.getPositionHolder(roleManager.EMERGENCY_ADMIN()),
             emergencyAdmin
         );
         assertEq(
-            l1Deployer.getPositionRoles(l1Deployer.EMERGENCY_ADMIN()),
+            roleManager.getPositionRoles(roleManager.EMERGENCY_ADMIN()),
             Roles.EMERGENCY_MANAGER
         );
         assertEq(
-            l1Deployer.getPositionHolder(l1Deployer.DEBT_ALLOCATOR()),
+            roleManager.getPositionHolder(roleManager.DEBT_ALLOCATOR()),
             address(0)
         );
         assertEq(
-            l1Deployer.getPositionRoles(l1Deployer.DEBT_ALLOCATOR()),
+            roleManager.getPositionRoles(roleManager.DEBT_ALLOCATOR()),
             debtAllocatorRoles
         );
         assertEq(
-            l1Deployer.getPositionHolder(l1Deployer.PENDING_GOVERNATOR()),
+            roleManager.getPositionHolder(roleManager.PENDING_GOVERNATOR()),
             address(0)
         );
         assertEq(
-            l1Deployer.getPositionHolder(l1Deployer.ACCOUNTANT()),
+            roleManager.getPositionHolder(roleManager.ACCOUNTANT()),
             address(accountant)
         );
         assertEq(
-            l1Deployer.getPositionHolder(l1Deployer.REGISTRY()),
+            roleManager.getPositionHolder(roleManager.REGISTRY()),
             address(registry)
         );
         assertEq(
-            l1Deployer.getPositionHolder(l1Deployer.ALLOCATOR_FACTORY()),
+            roleManager.getPositionHolder(roleManager.ALLOCATOR_FACTORY()),
             address(allocatorFactory)
         );
+    }
+
+    function test_l1DeployerSetup() public {
+        assertEq(l1Deployer.name(), "L1 Stake the Bridge Deployer");
         assertEq(
             l1Deployer.getPositionHolder(l1Deployer.L1_DEPLOYER()),
             address(l1Deployer)

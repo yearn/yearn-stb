@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.20;
 
-import {Proxy} from "@zkevm-stb/Proxy.sol";
 import {RoleManager} from "./RoleManager.sol";
+import {DeployerBase} from "./DeployerBase.sol";
 import {L1YearnEscrow} from "./L1YearnEscrow.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IPolygonZkEVMBridge} from "./interfaces/Polygon/IPolygonZkEVMBridge.sol";
 import {IPolygonRollupManager, IPolygonRollupContract} from "./interfaces/Polygon/IPolygonRollupManager.sol";
 
 /// @title Polygon CDK Stake the Bridge L1 Deployer.
-contract L1Deployer is RoleManager {
+contract L1Deployer is DeployerBase {
+    /// @notice Revert message for when a contract has already been deployed.
+    error AlreadyDeployed(address _contract);
+
     event RegisteredNewRollup(
         uint32 indexed rollupID,
         address indexed rollupContract,
@@ -61,6 +65,10 @@ contract L1Deployer is RoleManager {
                             IMMUTABLE'S
     //////////////////////////////////////////////////////////////*/
 
+    /// @notice Yearn STB Role Manager.
+    RoleManager public immutable roleManager;
+
+    /// @notice Polygon CDK Rollup Manager.
     IPolygonRollupManager public immutable rollupManager;
 
     /*//////////////////////////////////////////////////////////////
@@ -71,31 +79,27 @@ contract L1Deployer is RoleManager {
     mapping(uint32 => ChainConfig) internal _chainConfig;
 
     constructor(
-        address _governator,
-        address _czar,
-        address _management,
-        address _emergencyAdmin,
-        address _keeper,
-        address _registry,
-        address _allocatorFactory,
-        address _polygonZkEVMBridge,
-        address _escrowImplementation
+        address _bridgeAddress,
+        address _roleManager
     )
-        RoleManager(
-            _governator,
-            _czar,
-            _management,
-            _emergencyAdmin,
-            _keeper,
-            _registry,
-            _allocatorFactory,
-            _polygonZkEVMBridge,
-            _escrowImplementation
+        DeployerBase(
+            _bridgeAddress,
+            address(this),
+            address(new L1YearnEscrow())
         )
     {
+        roleManager = RoleManager(_roleManager);
+
         rollupManager = IPolygonRollupManager(
-            polygonZkEVMBridge.polygonRollupManager()
+            IPolygonZkEVMBridge(bridgeAddress).polygonRollupManager()
         );
+    }
+
+    /**
+     * @notice Get the name of this contract.
+     */
+    function name() external view virtual returns (string memory) {
+        return "L1 Stake the Bridge Deployer";
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -131,11 +135,11 @@ contract L1Deployer is RoleManager {
         if (_l1Escrow != address(0)) revert AlreadyDeployed(_l1Escrow);
 
         // Check if there is a current default vault.
-        _vault = getVault(_asset);
+        _vault = roleManager.getVault(_asset);
 
         // If not, deploy one and do full setup
         if (_vault == address(0)) {
-            _vault = _newVault(ORIGIN_NETWORK_ID, _asset);
+            _vault = roleManager.newVault(ORIGIN_NETWORK_ID, _asset);
         }
 
         // Deploy L1 Escrow.
@@ -228,7 +232,7 @@ contract L1Deployer is RoleManager {
         onlyRollupAdmin(_rollupID)
         returns (address _l1Escrow, address _vault)
     {
-        _vault = _newVault(_rollupID, _asset);
+        _vault = roleManager.newVault(_rollupID, _asset);
         _l1Escrow = _newCustomVault(_rollupID, _asset, _vault);
     }
 
@@ -244,10 +248,8 @@ contract L1Deployer is RoleManager {
         address _asset,
         address _vault
     ) external virtual onlyRollupAdmin(_rollupID) returns (address _l1Escrow) {
-        // If the vault has not been registered yet.
-        if (!isVaultsRoleManager(_vault)) {
-            _addNewVault(_rollupID, _vault);
-        }
+        // Make sure the vault has been registered.
+        require(roleManager.isVaultsRoleManager(_vault), "!role manager");
         _l1Escrow = _newCustomVault(_rollupID, _asset, _vault);
     }
 
@@ -288,7 +290,7 @@ contract L1Deployer is RoleManager {
             (
                 chainConfig_.rollupContract.admin(),
                 chainConfig_.escrowManager,
-                address(polygonZkEVMBridge),
+                bridgeAddress,
                 getL2EscrowAddress(_rollupID, _asset),
                 _rollupID,
                 _asset,
@@ -314,7 +316,7 @@ contract L1Deployer is RoleManager {
         chainConfig_.escrows[_asset] = _l1Escrow;
 
         // Send Message to Bridge for L2
-        polygonZkEVMBridge.bridgeMessage(
+        IPolygonZkEVMBridge(bridgeAddress).bridgeMessage(
             _rollupID,
             chainConfig_.l2Deployer,
             true,

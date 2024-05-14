@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.20;
 
-import {DeployerBase} from "./DeployerBase.sol";
+import {Positions} from "./Positions.sol";
 import {Roles} from "@yearn-vaults/interfaces/Roles.sol";
 import {IVault} from "@yearn-vaults/interfaces/IVault.sol";
 import {IAccountant} from "./interfaces/Yearn/IAccountant.sol";
@@ -11,7 +11,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {DebtAllocatorFactory} from "@vault-periphery/debtAllocators/DebtAllocatorFactory.sol";
 
 /// @title Yearn Stake the Bridge Role Manager.
-abstract contract RoleManager is DeployerBase {
+contract RoleManager is Positions {
     /// @notice Revert message for when a contract has already been deployed.
     error AlreadyDeployed(address _contract);
 
@@ -41,6 +41,9 @@ abstract contract RoleManager is DeployerBase {
         address debtAllocator;
         uint96 index;
     }
+
+    /// @notice ID to use for the L1
+    uint32 internal constant ORIGIN_NETWORK_ID = 0;
 
     /*//////////////////////////////////////////////////////////////
                            POSITION ID'S
@@ -97,10 +100,8 @@ abstract contract RoleManager is DeployerBase {
         address _emergencyAdmin,
         address _keeper,
         address _registry,
-        address _allocatorFactory,
-        address _polygonZkEVMBridge,
-        address _escrowImplementation
-    ) DeployerBase(_polygonZkEVMBridge, address(this), _escrowImplementation) {
+        address _allocatorFactory
+    ) {
         chad = _governator;
 
         // Governator gets no roles.
@@ -143,6 +144,33 @@ abstract contract RoleManager is DeployerBase {
     /*//////////////////////////////////////////////////////////////
                            VAULT CREATION
     //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Deploys a new vault to the RoleManager for the default version.
+     * @dev This will override any existing default vault to use a new API version.
+     * @param _asset Address of the asset to be used.
+     * @return _vault Address of the new vault
+     */
+    function newDefaultVault(
+        address _asset
+    ) external virtual onlyPositionHolder(GOVERNATOR) returns (address _vault) {
+        _vault = _newVault(ORIGIN_NETWORK_ID, _asset);
+    }
+
+    /**
+     * @notice Permissionless creation of a new endorsed vault.
+     * @param _rollupID Id of the rollup to deploy for.
+     * @param _asset Address of the underlying asset.
+     * @return _vault Address of the newly created vault.
+     */
+    function newVault(
+        uint32 _rollupID,
+        address _asset
+    ) external virtual returns (address _vault) {
+        _vault = getVault(_asset, _rollupID);
+        if (_vault != address(0)) revert AlreadyDeployed(_vault);
+        _vault = _newVault(_rollupID, _asset);
+    }
 
     /**
      * @notice Creates a new endorsed vault.
@@ -328,82 +356,6 @@ abstract contract RoleManager is DeployerBase {
     /*//////////////////////////////////////////////////////////////
                             VAULT MANAGEMENT
     //////////////////////////////////////////////////////////////*/
-
-    /**
-     * @notice Deploys a new vault to the RoleManager for the default version.
-     * @dev This will override any existing default vault.
-     * @param _asset Address of the asset to be used.
-     */
-    function newDefaultVault(
-        address _asset
-    ) external virtual onlyPositionHolder(GOVERNATOR) {
-        _newVault(ORIGIN_NETWORK_ID, _asset);
-    }
-
-    /**
-     * @notice Adds a new vault to the RoleManager for the default version.
-     * @dev This will override any existing default vault.
-     * @param _vault Address of the vault to be added.
-     */
-    function addNewVault(
-        address _vault
-    ) external virtual onlyPositionHolder(GOVERNATOR) {
-        _addNewVault(ORIGIN_NETWORK_ID, _vault);
-    }
-
-    /**
-     * @notice Adds a new vault to the RoleManager with the specified category and debt allocator.
-     * @dev If not already endorsed this function will endorse the vault.
-     * @param _rollupID rollupID for the vault to use.
-     * @param _vault Address of the vault to be added.
-     */
-    function _addNewVault(uint32 _rollupID, address _vault) internal virtual {
-        // If not the current role manager.
-        if (IVault(_vault).role_manager() != address(this)) {
-            // Accept the position of role manager.
-            IVault(_vault).accept_role_manager();
-        }
-
-        // Deploy a new Debt Allocator.
-        address _debtAllocator = _deployAllocator(_vault);
-
-        // Get the current registry.
-        address registry = getPositionHolder(REGISTRY);
-
-        // Check if the vault has been endorsed yet in the registry.
-        if (!Registry(registry).isEndorsed(_vault)) {
-            // If not endorse it.
-            // NOTE: This will revert if adding a vault of an older version.
-            Registry(registry).endorseMultiStrategyVault(_vault);
-        }
-
-        // Set the roles up.
-        _sanctify(_vault, _debtAllocator);
-
-        // Only set an accountant if there is not one set yet.
-        if (IVault(_vault).accountant() == address(0)) {
-            _setAccountant(_vault);
-        }
-
-        address _asset = IVault(_vault).asset();
-
-        // Add the vault config to the mapping.
-        vaultConfig[_vault] = VaultConfig({
-            asset: _asset,
-            rollupID: _rollupID,
-            debtAllocator: _debtAllocator,
-            index: uint96(vaults.length)
-        });
-
-        // Add the vault to the mapping.
-        _assetToVault[_asset][_rollupID] = _vault;
-
-        // Add the vault to the array.
-        vaults.push(_vault);
-
-        // Emit event.
-        emit AddedNewVault(_vault, _debtAllocator, _rollupID);
-    }
 
     /**
      * @notice Update a `_vault`s debt allocator.
@@ -599,7 +551,7 @@ abstract contract RoleManager is DeployerBase {
      * @notice Get the name of this contract.
      */
     function name() external view virtual returns (string memory) {
-        return string(abi.encodePacked("L1 Stake the Bridge Deployer"));
+        return string(abi.encodePacked("Stake the Bridge Role Manager"));
     }
 
     /**
