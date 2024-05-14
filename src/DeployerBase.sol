@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 import {Positions} from "./Positions.sol";
 import {Proxy} from "@zkevm-stb/Proxy.sol";
 import {CREATE3} from "./libraries/CREATE3.sol";
-import {IPolygonZkEVMBridge} from "./interfaces/Polygon/IPolygonZkEVMBridge.sol";
 
 /**
  * @title DeployerBase
@@ -30,15 +29,15 @@ abstract contract DeployerBase is Positions {
     bytes32 public constant ESCROW_IMPLEMENTATION =
         keccak256("Escrow Implementation");
 
-    /// @notice Address of the PolygonZkEVMBridge contract
-    IPolygonZkEVMBridge public immutable polygonZkEVMBridge;
+    /// @notice Address of the Bridge contract
+    address public immutable bridgeAddress;
 
     constructor(
-        address _polygonZkEVMBridge,
+        address _bridgeAddress,
         address _l1Deployer,
         address _escrowImplementation
     ) {
-        polygonZkEVMBridge = IPolygonZkEVMBridge(_polygonZkEVMBridge);
+        bridgeAddress = _bridgeAddress;
         _setPositionHolder(L1_DEPLOYER, _l1Deployer);
         _setPositionHolder(ESCROW_IMPLEMENTATION, _escrowImplementation);
     }

@@ -79,7 +79,7 @@ contract L2Deployer is DeployerBase {
     ) external payable {
         // Can only be called by the bridge
         require(
-            address(polygonZkEVMBridge) == msg.sender,
+            bridgeAddress == msg.sender,
             "L2Deployer: Not PolygonZkEVMBridge"
         );
         require(
@@ -198,7 +198,7 @@ contract L2Deployer is DeployerBase {
             L2Escrow.initialize,
             (
                 getPositionHolder(L2_ADMIN),
-                address(polygonZkEVMBridge),
+                bridgeAddress,
                 _l1Escrow,
                 ORIGIN_NETWORK_ID,
                 _l1Token,

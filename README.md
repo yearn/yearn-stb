@@ -2,7 +2,11 @@
 
 # Structure
 
-![alt text](setup.png)
+![alt text](image.png)
+
+## [Role Manager](https://github.com/yearn/yearn-stb/blob/seperate/src/RoleManager.sol)
+
+- Yearn governed contract to handle vault deployments and configuration
 
 ## [L1 Deployer](https://github.com/yearn/yearn-stb/blob/master/src/L1Deployer.sol)
 
@@ -27,11 +31,6 @@
         - Vault (Optional)
 
 - Allows for a Rollup Admin to update is EScrow Manager or L2 Deployer
-
-- Holds all data for deployed vaults and escrows
-    - Uses 0 for the default vaults or the rollup specific ID for any custom vaults.
-    
-- Holds the Role Manager position for all vaults.
 
 
 ## [L2 Deployer](https://github.com/yearn/yearn-stb/blob/master/src/L2Deployer.sol)
