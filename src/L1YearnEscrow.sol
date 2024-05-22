@@ -97,7 +97,7 @@ contract L1YearnEscrow is L1Escrow {
         );
 
         // Max approve the vault
-        originTokenAddress().forceApprove(_vaultAddress, 2 ** 256 - 1);
+        IERC20(_originTokenAddress).forceApprove(_vaultAddress, 2 ** 256 - 1);
         // Set the vault variable
         VaultStorage storage $ = _getVaultStorage();
         $.vaultAddress = IVault(_vaultAddress);
