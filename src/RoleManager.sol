@@ -470,7 +470,7 @@ contract RoleManager is Positions {
         uint256 _role
     ) external virtual onlyPositionHolder(CZAR) {
         address _vault;
-        for (uint256 i = 0; i < _vaults.length; ++i) {
+        for (uint256 i; i < _vaults.length; ++i) {
             _vault = _vaults[i];
             // Make sure the vault is added to this Role Manager.
             require(vaultConfig[_vault].asset != address(0), "vault not added");
