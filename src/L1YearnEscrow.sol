@@ -223,6 +223,8 @@ contract L1YearnEscrow is L1Escrow {
     /**
      * @dev Update the vault to deploy funds into.
      *      Will fully withdraw from the old vault.
+     *      The current vault must be completely liquid for this to succeed.
+     *
      * @param _vaultAddress Address of the new vault to use.
      */
     function updateVault(
