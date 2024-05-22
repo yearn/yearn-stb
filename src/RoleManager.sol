@@ -42,6 +42,17 @@ contract RoleManager is Positions {
         uint96 index;
     }
 
+    /// @notice Make sure the vault has been added to the role manager.
+    modifier vaultIsAdded(address _vault) {
+        _vaultIsAdded(_vault);
+        _;
+    }
+
+    /// @notice Check if the vault is added to the Role Manager.
+    function _vaultIsAdded(address _vault) internal view virtual {
+        require(vaultConfig[_vault].asset != address(0), "vault not added");
+    }
+
     /// @notice ID to use for the L1
     uint32 internal constant ORIGIN_NETWORK_ID = 0;
 
@@ -378,10 +389,7 @@ contract RoleManager is Positions {
     function updateDebtAllocator(
         address _vault,
         address _debtAllocator
-    ) public virtual onlyPositionHolder(MANAGEMENT) {
-        // Make sure the vault has been added to the role manager.
-        require(vaultConfig[_vault].asset != address(0), "vault not added");
-
+    ) public virtual vaultIsAdded(_vault) onlyPositionHolder(MANAGEMENT) {
         // Remove the roles from the old allocator.
         _setRole(_vault, Position(vaultConfig[_vault].debtAllocator, 0));
 
@@ -406,10 +414,7 @@ contract RoleManager is Positions {
     function updateKeeper(
         address _vault,
         address _keeper
-    ) external virtual onlyPositionHolder(MANAGEMENT) {
-        // Make sure the vault has been added to the role manager.
-        require(vaultConfig[_vault].asset != address(0), "vault not added");
-
+    ) external virtual vaultIsAdded(_vault) onlyPositionHolder(MANAGEMENT) {
         // Remove the roles from the old keeper if active.
         address defaultKeeper = getPositionHolder(KEEPER);
         if (
@@ -429,17 +434,15 @@ contract RoleManager is Positions {
      */
     function removeVault(
         address _vault
-    ) external virtual onlyPositionHolder(CZAR) {
-        // Get the vault specific config.
-        VaultConfig memory config = vaultConfig[_vault];
-        // Make sure the vault has been added to the role manager.
-        require(config.asset != address(0), "vault not added");
-
+    ) external virtual vaultIsAdded(_vault) onlyPositionHolder(CZAR) {
         // Transfer the role manager position.
         IVault(_vault).transfer_role_manager(chad);
 
         // Address of the vault to replace it with.
         address vaultToMove = vaults[vaults.length - 1];
+
+        // Get the vault specific config.
+        VaultConfig memory config = vaultConfig[_vault];
 
         // Move the last vault to the index of `_vault`
         vaults[config.index] = vaultToMove;
