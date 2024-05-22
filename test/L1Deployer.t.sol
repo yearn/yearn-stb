@@ -161,6 +161,8 @@ contract L1DeployerTest is Setup {
 
         IVault vault = IVault(_vault);
 
+        assertEq(vault.name(), "DAI-STB yVault");
+        assertEq(vault.symbol(), "stbDAI");
         assertEq(vault.accountant(), address(accountant));
         assertEq(vault.asset(), address(asset));
         assertEq(vault.deposit_limit(), 2 ** 256 - 1);

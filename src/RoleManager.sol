@@ -196,15 +196,21 @@ contract RoleManager is Positions {
         // Append the rollup ID for the name and symbol of custom vaults.
         string memory _id = _rollupID == ORIGIN_NETWORK_ID
             ? ""
-            : string(abi.encodePacked("-", Strings.toString(_rollupID)));
+            : string.concat("-", Strings.toString(_rollupID));
 
         // Name is "{SYMBOL}-STB yVault"
-        string memory _name = string(
-            abi.encodePacked(ERC20(_asset).symbol(), "-STB", _id, " yVault")
+        string memory _name = string.concat(
+            ERC20(_asset).symbol(),
+            "-STB",
+            _id,
+            " yVault"
         );
+
         // Symbol is "stb{SYMBOL}".
-        string memory _symbol = string(
-            abi.encodePacked("stb", ERC20(_asset).symbol(), _id)
+        string memory _symbol = string.concat(
+            "stb",
+            ERC20(_asset).symbol(),
+            _id
         );
 
         // Deploy through the registry so it is automatically endorsed.
