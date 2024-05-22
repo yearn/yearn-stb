@@ -523,6 +523,8 @@ contract RoleManager is Positions {
     function setDefaultProfitMaxUnlock(
         uint256 _newDefaultProfitMaxUnlock
     ) external virtual onlyPositionHolder(GOVERNATOR) {
+        require(_newDefaultProfitMaxUnlock != 0, "too short");
+        require(_newDefaultProfitMaxUnlock <= 31_556_952, "too long");
         defaultProfitMaxUnlock = _newDefaultProfitMaxUnlock;
 
         emit UpdateDefaultProfitMaxUnlock(_newDefaultProfitMaxUnlock);
