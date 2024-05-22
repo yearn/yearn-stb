@@ -163,6 +163,7 @@ contract L1Deployer is DeployerBase {
         address _l2Deployer
     ) external virtual {
         require(getRollupContract(_rollupID) == address(0), "registered");
+        require(_l1EscrowManager != address(0), "ZERO ADDRESS");
         require(_l2Deployer != address(0), "ZERO ADDRESS");
 
         IPolygonRollupContract _rollupContract = rollupManager
