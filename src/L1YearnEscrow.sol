@@ -181,7 +181,10 @@ contract L1YearnEscrow is L1Escrow {
             // Check again to account for if there was loose underlying
             if (amount > maxWithdraw) {
                 // Send an equivalent amount of shares for the difference.
-                uint256 shares = _vault.convertToShares(amount - maxWithdraw);
+                uint256 shares;
+                unchecked {
+                    shares = _vault.convertToShares(amount - maxWithdraw);
+                }
                 _vault.transfer(destinationAddress, shares);
                 if (maxWithdraw == 0) return;
                 amount = maxWithdraw;
@@ -249,11 +252,14 @@ contract L1YearnEscrow is L1Escrow {
             // Deposit any loose funds over minimum buffer
             uint256 balance = originToken.balanceOf(address(this));
             uint256 _minimumBuffer = $.minimumBuffer;
-            if (balance > _minimumBuffer)
-                IVault(_vaultAddress).deposit(
-                    balance - _minimumBuffer,
-                    address(this)
-                );
+            if (balance > _minimumBuffer) {
+                unchecked {
+                    IVault(_vaultAddress).deposit(
+                        balance - _minimumBuffer,
+                        address(this)
+                    );
+                }
+            }
         }
 
         // Update Storage
@@ -285,10 +291,15 @@ contract L1YearnEscrow is L1Escrow {
 
         if (balance > _minimumBuffer) {
             // Deposit the difference.
-            $.vaultAddress.deposit(balance - _minimumBuffer, address(this));
+            unchecked {
+                $.vaultAddress.deposit(balance - _minimumBuffer, address(this));
+            }
         } else if (balance < _minimumBuffer) {
             // Withdraw the difference
-            uint256 diff = _minimumBuffer - balance;
+            uint256 diff;
+            unchecked {
+                diff = _minimumBuffer - balance;
+            }
             uint256 available = $.vaultAddress.maxWithdraw(address(this));
 
             // Withdraw the min between the difference or what is available.
