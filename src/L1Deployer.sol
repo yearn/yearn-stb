@@ -367,7 +367,7 @@ contract L1Deployer is DeployerBase {
      */
     function getEscrowManager(
         uint32 _rollupID
-    ) public view virtual returns (address) {
+    ) external view virtual returns (address) {
         return _chainConfig[_rollupID].escrowManager;
     }
 

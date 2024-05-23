@@ -579,7 +579,7 @@ contract RoleManager is Positions {
      * @param _asset The underlying asset used.
      * @return The default vault for the specified `_asset`.
      */
-    function getVault(address _asset) public view virtual returns (address) {
+    function getVault(address _asset) external view virtual returns (address) {
         return getVault(_asset, ORIGIN_NETWORK_ID);
     }
 
@@ -611,7 +611,7 @@ contract RoleManager is Positions {
      */
     function isVaultsRoleManager(
         address _vault
-    ) public view virtual returns (bool) {
+    ) external view virtual returns (bool) {
         return vaultConfig[_vault].asset != address(0);
     }
 
