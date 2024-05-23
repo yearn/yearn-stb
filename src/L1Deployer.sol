@@ -219,6 +219,8 @@ contract L1Deployer is DeployerBase {
 
     /**
      * @notice Creates a new custom vault and escrow for a specific asset on the specified rollup.
+     * @dev If the L1 escrow already exists the Rollup admin
+     *  will need to update the vault manually on the escrow.
      * @param _rollupID The ID of the rollup.
      * @param _asset The address of the asset for which the vault and escrow are created.
      * @return _l1Escrow The address of the L1 escrow.
@@ -234,7 +236,11 @@ contract L1Deployer is DeployerBase {
         returns (address _l1Escrow, address _vault)
     {
         _vault = roleManager.newVault(_rollupID, _asset);
-        _l1Escrow = _newCustomVault(_rollupID, _asset, _vault);
+        // Deploy an L1 escrow if it does not already exist.
+        _l1Escrow = getEscrow(_rollupID, _asset);
+        if (_l1Escrow == address(0)) {
+            _l1Escrow = _deployL1Escrow(_rollupID, _asset, _vault);
+        }
     }
 
     /**
@@ -251,23 +257,7 @@ contract L1Deployer is DeployerBase {
     ) external virtual onlyRollupAdmin(_rollupID) returns (address _l1Escrow) {
         // Make sure the vault has been registered.
         require(roleManager.isVaultsRoleManager(_vault), "!role manager");
-        _l1Escrow = _newCustomVault(_rollupID, _asset, _vault);
-    }
-
-    /**
-     * @dev Deploys an L1 Escrow for a custom vault if one does not exist.
-     *  Will store all relevant information as well.
-     */
-    function _newCustomVault(
-        uint32 _rollupID,
-        address _asset,
-        address _vault
-    ) internal virtual returns (address _l1Escrow) {
-        _l1Escrow = getEscrow(_rollupID, _asset);
-
-        if (_l1Escrow == address(0)) {
-            _l1Escrow = _deployL1Escrow(_rollupID, _asset, _vault);
-        }
+        _l1Escrow = _deployL1Escrow(_rollupID, _asset, _vault);
     }
 
     /*//////////////////////////////////////////////////////////////
