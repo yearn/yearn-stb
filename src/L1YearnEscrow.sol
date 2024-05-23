@@ -114,19 +114,14 @@ contract L1YearnEscrow is L1Escrow {
     function _receiveTokens(
         uint256 amount
     ) internal virtual override whenNotPaused {
-        originTokenAddress().safeTransferFrom(
-            msg.sender,
-            address(this),
-            amount
-        );
+        IERC20 originToken = originTokenAddress();
+        originToken.safeTransferFrom(msg.sender, address(this), amount);
 
         VaultStorage storage $ = _getVaultStorage();
         uint256 _minimumBuffer = $.minimumBuffer;
         // Deposit to the vault if above buffer
         if (_minimumBuffer != 0) {
-            uint256 underlyingBalance = originTokenAddress().balanceOf(
-                address(this)
-            );
+            uint256 underlyingBalance = originToken.balanceOf(address(this));
 
             if (underlyingBalance <= _minimumBuffer) return;
 
