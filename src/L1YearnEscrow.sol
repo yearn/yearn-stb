@@ -97,7 +97,7 @@ contract L1YearnEscrow is L1Escrow {
         );
 
         // Max approve the vault
-        originTokenAddress().forceApprove(_vaultAddress, 2 ** 256 - 1);
+        IERC20(_originTokenAddress).forceApprove(_vaultAddress, 2 ** 256 - 1);
         // Set the vault variable
         VaultStorage storage $ = _getVaultStorage();
         $.vaultAddress = IVault(_vaultAddress);
@@ -114,19 +114,14 @@ contract L1YearnEscrow is L1Escrow {
     function _receiveTokens(
         uint256 amount
     ) internal virtual override whenNotPaused {
-        originTokenAddress().safeTransferFrom(
-            msg.sender,
-            address(this),
-            amount
-        );
+        IERC20 originToken = originTokenAddress();
+        originToken.safeTransferFrom(msg.sender, address(this), amount);
 
         VaultStorage storage $ = _getVaultStorage();
         uint256 _minimumBuffer = $.minimumBuffer;
         // Deposit to the vault if above buffer
         if (_minimumBuffer != 0) {
-            uint256 underlyingBalance = originTokenAddress().balanceOf(
-                address(this)
-            );
+            uint256 underlyingBalance = originToken.balanceOf(address(this));
 
             if (underlyingBalance <= _minimumBuffer) return;
 
@@ -181,7 +176,10 @@ contract L1YearnEscrow is L1Escrow {
             // Check again to account for if there was loose underlying
             if (amount > maxWithdraw) {
                 // Send an equivalent amount of shares for the difference.
-                uint256 shares = _vault.convertToShares(amount - maxWithdraw);
+                uint256 shares;
+                unchecked {
+                    shares = _vault.convertToShares(amount - maxWithdraw);
+                }
                 _vault.transfer(destinationAddress, shares);
                 if (maxWithdraw == 0) return;
                 amount = maxWithdraw;
@@ -220,6 +218,8 @@ contract L1YearnEscrow is L1Escrow {
     /**
      * @dev Update the vault to deploy funds into.
      *      Will fully withdraw from the old vault.
+     *      The current vault must be completely liquid for this to succeed.
+     *
      * @param _vaultAddress Address of the new vault to use.
      */
     function updateVault(
@@ -249,11 +249,14 @@ contract L1YearnEscrow is L1Escrow {
             // Deposit any loose funds over minimum buffer
             uint256 balance = originToken.balanceOf(address(this));
             uint256 _minimumBuffer = $.minimumBuffer;
-            if (balance > _minimumBuffer)
-                IVault(_vaultAddress).deposit(
-                    balance - _minimumBuffer,
-                    address(this)
-                );
+            if (balance > _minimumBuffer) {
+                unchecked {
+                    IVault(_vaultAddress).deposit(
+                        balance - _minimumBuffer,
+                        address(this)
+                    );
+                }
+            }
         }
 
         // Update Storage
@@ -285,10 +288,15 @@ contract L1YearnEscrow is L1Escrow {
 
         if (balance > _minimumBuffer) {
             // Deposit the difference.
-            $.vaultAddress.deposit(balance - _minimumBuffer, address(this));
+            unchecked {
+                $.vaultAddress.deposit(balance - _minimumBuffer, address(this));
+            }
         } else if (balance < _minimumBuffer) {
             // Withdraw the difference
-            uint256 diff = _minimumBuffer - balance;
+            uint256 diff;
+            unchecked {
+                diff = _minimumBuffer - balance;
+            }
             uint256 available = $.vaultAddress.maxWithdraw(address(this));
 
             // Withdraw the min between the difference or what is available.

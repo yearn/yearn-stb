@@ -42,6 +42,17 @@ contract RoleManager is Positions {
         uint96 index;
     }
 
+    /// @notice Make sure the vault has been added to the role manager.
+    modifier vaultIsAdded(address _vault) {
+        _vaultIsAdded(_vault);
+        _;
+    }
+
+    /// @notice Check if the vault is added to the Role Manager.
+    function _vaultIsAdded(address _vault) internal view virtual {
+        require(vaultConfig[_vault].asset != address(0), "vault not added");
+    }
+
     /// @notice ID to use for the L1
     uint32 internal constant ORIGIN_NETWORK_ID = 0;
 
@@ -185,15 +196,21 @@ contract RoleManager is Positions {
         // Append the rollup ID for the name and symbol of custom vaults.
         string memory _id = _rollupID == ORIGIN_NETWORK_ID
             ? ""
-            : string(abi.encodePacked("-", Strings.toString(_rollupID)));
+            : string.concat("-", Strings.toString(_rollupID));
 
         // Name is "{SYMBOL}-STB yVault"
-        string memory _name = string(
-            abi.encodePacked(ERC20(_asset).symbol(), "-STB", _id, " yVault")
+        string memory _name = string.concat(
+            ERC20(_asset).symbol(),
+            "-STB",
+            _id,
+            " yVault"
         );
+
         // Symbol is "stb{SYMBOL}".
-        string memory _symbol = string(
-            abi.encodePacked("stb", ERC20(_asset).symbol(), _id)
+        string memory _symbol = string.concat(
+            "stb",
+            ERC20(_asset).symbol(),
+            _id
         );
 
         // Deploy through the registry so it is automatically endorsed.
@@ -378,10 +395,7 @@ contract RoleManager is Positions {
     function updateDebtAllocator(
         address _vault,
         address _debtAllocator
-    ) public virtual onlyPositionHolder(MANAGEMENT) {
-        // Make sure the vault has been added to the role manager.
-        require(vaultConfig[_vault].asset != address(0), "vault not added");
-
+    ) public virtual vaultIsAdded(_vault) onlyPositionHolder(MANAGEMENT) {
         // Remove the roles from the old allocator.
         _setRole(_vault, Position(vaultConfig[_vault].debtAllocator, 0));
 
@@ -406,10 +420,7 @@ contract RoleManager is Positions {
     function updateKeeper(
         address _vault,
         address _keeper
-    ) external virtual onlyPositionHolder(MANAGEMENT) {
-        // Make sure the vault has been added to the role manager.
-        require(vaultConfig[_vault].asset != address(0), "vault not added");
-
+    ) external virtual vaultIsAdded(_vault) onlyPositionHolder(MANAGEMENT) {
         // Remove the roles from the old keeper if active.
         address defaultKeeper = getPositionHolder(KEEPER);
         if (
@@ -429,17 +440,15 @@ contract RoleManager is Positions {
      */
     function removeVault(
         address _vault
-    ) external virtual onlyPositionHolder(CZAR) {
-        // Get the vault specific config.
-        VaultConfig memory config = vaultConfig[_vault];
-        // Make sure the vault has been added to the role manager.
-        require(config.asset != address(0), "vault not added");
-
+    ) external virtual vaultIsAdded(_vault) onlyPositionHolder(CZAR) {
         // Transfer the role manager position.
         IVault(_vault).transfer_role_manager(chad);
 
         // Address of the vault to replace it with.
         address vaultToMove = vaults[vaults.length - 1];
+
+        // Get the vault specific config.
+        VaultConfig memory config = vaultConfig[_vault];
 
         // Move the last vault to the index of `_vault`
         vaults[config.index] = vaultToMove;
@@ -470,7 +479,7 @@ contract RoleManager is Positions {
         uint256 _role
     ) external virtual onlyPositionHolder(CZAR) {
         address _vault;
-        for (uint256 i = 0; i < _vaults.length; ++i) {
+        for (uint256 i; i < _vaults.length; ++i) {
             _vault = _vaults[i];
             // Make sure the vault is added to this Role Manager.
             require(vaultConfig[_vault].asset != address(0), "vault not added");
@@ -523,6 +532,8 @@ contract RoleManager is Positions {
     function setDefaultProfitMaxUnlock(
         uint256 _newDefaultProfitMaxUnlock
     ) external virtual onlyPositionHolder(GOVERNATOR) {
+        require(_newDefaultProfitMaxUnlock != 0, "too short");
+        require(_newDefaultProfitMaxUnlock <= 31_556_952, "too long");
         defaultProfitMaxUnlock = _newDefaultProfitMaxUnlock;
 
         emit UpdateDefaultProfitMaxUnlock(_newDefaultProfitMaxUnlock);
@@ -568,7 +579,7 @@ contract RoleManager is Positions {
      * @param _asset The underlying asset used.
      * @return The default vault for the specified `_asset`.
      */
-    function getVault(address _asset) public view virtual returns (address) {
+    function getVault(address _asset) external view virtual returns (address) {
         return getVault(_asset, ORIGIN_NETWORK_ID);
     }
 
@@ -600,7 +611,7 @@ contract RoleManager is Positions {
      */
     function isVaultsRoleManager(
         address _vault
-    ) public view virtual returns (bool) {
+    ) external view virtual returns (bool) {
         return vaultConfig[_vault].asset != address(0);
     }
 
