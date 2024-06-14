@@ -37,7 +37,7 @@ contract L1YearnEscrow is L1Escrow {
     /// @custom:storage-location erc7201:yearn.storage.vault
     struct VaultStorage {
         IVault vaultAddress;
-        uint256 deployed;
+        uint256 deposited;
         uint256 minimumBuffer;
     }
 
@@ -56,9 +56,9 @@ contract L1YearnEscrow is L1Escrow {
         return address($.vaultAddress);
     }
 
-    function deployed() public view returns (uint256) {
+    function deposited() public view returns (uint256) {
         VaultStorage storage $ = _getVaultStorage();
-        return $.deployed;
+        return $.deposited;
     }
 
     function minimumBuffer() public view returns (uint256) {
@@ -145,7 +145,7 @@ contract L1YearnEscrow is L1Escrow {
 
         _vault.deposit(amount, address(this));
         unchecked {
-            $.deployed += amount;
+            $.deposited += amount;
         }
     }
 
@@ -186,12 +186,14 @@ contract L1YearnEscrow is L1Escrow {
             // Check again to account for if there was loose underlying
             if (amount > maxWithdraw) {
                 // Send an equivalent amount of shares for the difference.
-                uint256 shares;
+                uint256 diff;
                 unchecked {
-                    shares = _vault.convertToShares(amount - maxWithdraw);
+                    diff = amount - maxWithdraw;
+                    $.deposited -= diff;
                 }
+                uint256 shares = _vault.convertToShares(diff);
                 _vault.transfer(destinationAddress, shares);
-                $.deployed -= (amount - maxWithdraw);
+
                 if (maxWithdraw == 0) return;
                 amount = maxWithdraw;
             }
@@ -200,7 +202,7 @@ contract L1YearnEscrow is L1Escrow {
         // Withdraw from vault to receiver.
         _vault.withdraw(amount, destinationAddress, address(this));
         unchecked {
-            $.deployed -= amount;
+            $.deposited -= amount;
         }
     }
 
@@ -252,7 +254,6 @@ contract L1YearnEscrow is L1Escrow {
             // Withdraw the full balance of the current vault.
             if (balance != 0) {
                 oldVault.redeem(balance, address(this), address(this));
-                $.deployed = 0;
             }
         }
 
@@ -265,13 +266,11 @@ contract L1YearnEscrow is L1Escrow {
             uint256 balance = originToken.balanceOf(address(this));
             uint256 _minimumBuffer = $.minimumBuffer;
             if (balance > _minimumBuffer) {
+                uint256 toDeposit;
                 unchecked {
-                    IVault(_vaultAddress).deposit(
-                        balance - _minimumBuffer,
-                        address(this)
-                    );
-                    $.deployed = balance - _minimumBuffer;
+                    toDeposit = balance - _minimumBuffer;
                 }
+                IVault(_vaultAddress).deposit(toDeposit, address(this));
             }
         }
 
@@ -306,7 +305,6 @@ contract L1YearnEscrow is L1Escrow {
             // Deposit the difference.
             unchecked {
                 $.vaultAddress.deposit(balance - _minimumBuffer, address(this));
-                $.deployed += (balance - _minimumBuffer);
             }
         } else if (balance < _minimumBuffer) {
             // Withdraw the difference
@@ -319,7 +317,6 @@ contract L1YearnEscrow is L1Escrow {
             // Withdraw the min between the difference or what is available.
             diff = diff > available ? available : diff;
             $.vaultAddress.withdraw(diff, address(this), address(this));
-            $.deployed -= diff;
         }
     }
 }
