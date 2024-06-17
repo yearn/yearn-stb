@@ -106,6 +106,7 @@ contract EscrowTest is Setup {
         mockEscrow.bridgeToken(user, _amount, true);
 
         assertEq(vault.totalAssets(), _amount);
+        assertEq(mockEscrow.deposited(), _amount);
         assertEq(asset.balanceOf(user), 0);
         assertEq(asset.balanceOf(address(mockEscrow)), 0);
         assertEq(vault.balanceOf(address(mockEscrow)), _amount);
@@ -136,6 +137,7 @@ contract EscrowTest is Setup {
         mockEscrow.onMessageReceived(counterPart, l2RollupID, data);
 
         assertEq(vault.totalAssets(), _amount - toWithdraw);
+        assertEq(mockEscrow.deposited(), _amount - toWithdraw);
         assertEq(asset.balanceOf(user), toWithdraw);
         assertEq(asset.balanceOf(address(mockEscrow)), 0);
         assertEq(vault.balanceOf(address(mockEscrow)), _amount - toWithdraw);
@@ -146,6 +148,7 @@ contract EscrowTest is Setup {
         mockEscrow.onMessageReceived(counterPart, l2RollupID, data);
 
         assertEq(vault.totalAssets(), 0);
+        assertEq(mockEscrow.deposited(), 0);
         assertEq(asset.balanceOf(user), _amount);
         assertEq(asset.balanceOf(address(mockEscrow)), 0);
         assertEq(vault.balanceOf(address(mockEscrow)), 0);
@@ -185,6 +188,7 @@ contract EscrowTest is Setup {
         mockEscrow.bridgeToken(user, _amount, true);
 
         assertEq(vault.totalAssets(), 0);
+        assertEq(mockEscrow.deposited(), _amount);
         assertEq(asset.balanceOf(user), 0);
         assertEq(asset.balanceOf(address(mockEscrow)), _amount);
         assertEq(vault.balanceOf(address(mockEscrow)), 0);
@@ -201,6 +205,7 @@ contract EscrowTest is Setup {
         mockEscrow.bridgeToken(user, _amount, true);
 
         assertEq(vault.totalAssets(), _amount);
+        assertEq(mockEscrow.deposited(), _amount * 2);
         assertEq(asset.balanceOf(user), 0);
         assertEq(asset.balanceOf(address(mockEscrow)), _amount);
         assertEq(vault.balanceOf(address(mockEscrow)), _amount);
@@ -214,6 +219,7 @@ contract EscrowTest is Setup {
         mockEscrow.onMessageReceived(counterPart, l2RollupID, data);
 
         assertEq(vault.totalAssets(), _amount - 10);
+        assertEq(mockEscrow.deposited(), _amount * 2 - toWithdraw);
         assertEq(asset.balanceOf(user), toWithdraw);
         assertEq(asset.balanceOf(address(mockEscrow)), 0);
         assertEq(vault.balanceOf(address(mockEscrow)), _amount - 10);
@@ -247,6 +253,7 @@ contract EscrowTest is Setup {
         mintAndBridge(mockEscrow, user, _amount);
 
         assertEq(vault.totalAssets(), toDeposit);
+        assertEq(mockEscrow.deposited(), _amount);
         assertEq(asset.balanceOf(user), 0);
         assertEq(asset.balanceOf(address(mockEscrow)), _amount - toDeposit);
         assertEq(vault.balanceOf(address(mockEscrow)), toDeposit);
@@ -257,6 +264,7 @@ contract EscrowTest is Setup {
         mockEscrow.onMessageReceived(counterPart, l2RollupID, data);
 
         assertEq(vault.totalAssets(), 0);
+        assertEq(mockEscrow.deposited(), 0);
         assertEq(asset.balanceOf(user), _amount);
         assertEq(asset.balanceOf(address(mockEscrow)), 0);
         assertEq(vault.balanceOf(address(mockEscrow)), 0);
@@ -276,6 +284,7 @@ contract EscrowTest is Setup {
         mintAndBridge(mockEscrow, user, _amount);
 
         assertEq(vault.totalAssets(), _amount);
+        assertEq(mockEscrow.deposited(), _amount);
         assertEq(asset.balanceOf(user), 0);
         assertEq(asset.balanceOf(address(mockEscrow)), 0);
         assertEq(vault.balanceOf(address(mockEscrow)), _amount);
@@ -288,6 +297,7 @@ contract EscrowTest is Setup {
         mockEscrow.rebalance();
 
         assertEq(vault.totalAssets(), left);
+        assertEq(mockEscrow.deposited(), _amount);
         assertEq(asset.balanceOf(user), 0);
         assertEq(asset.balanceOf(address(mockEscrow)), _amount - left);
         assertEq(vault.balanceOf(address(mockEscrow)), left);
@@ -298,6 +308,7 @@ contract EscrowTest is Setup {
         mockEscrow.rebalance();
 
         assertEq(vault.totalAssets(), _amount);
+        assertEq(mockEscrow.deposited(), _amount);
         assertEq(asset.balanceOf(user), 0);
         assertEq(asset.balanceOf(address(mockEscrow)), 0);
         assertEq(vault.balanceOf(address(mockEscrow)), _amount);
@@ -316,6 +327,7 @@ contract EscrowTest is Setup {
         mintAndBridge(mockEscrow, user, _amount);
 
         assertEq(vault.totalAssets(), _amount);
+        assertEq(mockEscrow.deposited(), _amount);
         assertEq(asset.balanceOf(user), 0);
         assertEq(asset.balanceOf(address(mockEscrow)), 0);
         assertEq(vault.balanceOf(address(mockEscrow)), _amount);
@@ -330,6 +342,7 @@ contract EscrowTest is Setup {
         mockEscrow.updateVault(address(newVault));
 
         assertEq(vault.totalAssets(), 0);
+        assertEq(mockEscrow.deposited(), _amount);
         assertEq(vault.balanceOf(address(mockEscrow)), 0);
         assertEq(asset.allowance(address(mockEscrow), address(vault)), 0);
         assertEq(asset.balanceOf(address(mockEscrow)), 0);
@@ -345,6 +358,7 @@ contract EscrowTest is Setup {
 
         assertEq(vault.totalAssets(), 0);
         assertEq(newVault.totalAssets(), _amount * 2);
+        assertEq(mockEscrow.deposited(), _amount * 2);
         assertEq(asset.balanceOf(user), 0);
         assertEq(asset.balanceOf(address(mockEscrow)), 0);
         assertEq(vault.balanceOf(address(mockEscrow)), 0);
@@ -356,6 +370,7 @@ contract EscrowTest is Setup {
         mockEscrow.onMessageReceived(counterPart, l2RollupID, data);
 
         assertEq(newVault.totalAssets(), 0);
+        assertEq(mockEscrow.deposited(), 0);
         assertEq(asset.balanceOf(user), _amount * 2);
         assertEq(asset.balanceOf(address(mockEscrow)), 0);
         assertEq(newVault.balanceOf(address(mockEscrow)), 0);
@@ -374,6 +389,7 @@ contract EscrowTest is Setup {
         mintAndBridge(mockEscrow, user, _amount);
 
         assertEq(vault.totalAssets(), _amount);
+        assertEq(mockEscrow.deposited(), _amount);
         assertEq(asset.balanceOf(user), 0);
         assertEq(asset.balanceOf(address(mockEscrow)), 0);
         assertEq(vault.balanceOf(address(mockEscrow)), _amount);
@@ -390,6 +406,7 @@ contract EscrowTest is Setup {
         mockEscrow.withdraw(czar, _amount);
 
         assertEq(vault.totalAssets(), _amount);
+        assertEq(mockEscrow.deposited(), _amount);
         assertEq(vault.balanceOf(address(mockEscrow)), 0);
         assertEq(vault.balanceOf(czar), _amount);
         assertEq(asset.balanceOf(address(mockEscrow)), 0);
@@ -404,6 +421,7 @@ contract EscrowTest is Setup {
         mockEscrow.onMessageReceived(counterPart, l2RollupID, data);
 
         assertEq(vault.totalAssets(), 0);
+        assertEq(mockEscrow.deposited(), 0);
         assertEq(asset.balanceOf(user), _amount);
         assertEq(asset.balanceOf(address(mockEscrow)), 0);
         assertEq(vault.balanceOf(address(mockEscrow)), 0);
@@ -422,6 +440,7 @@ contract EscrowTest is Setup {
         mintAndBridge(mockEscrow, user, _amount);
 
         assertEq(vault.totalAssets(), _amount);
+        assertEq(mockEscrow.deposited(), _amount);
         assertEq(asset.balanceOf(user), 0);
         assertEq(asset.balanceOf(address(mockEscrow)), 0);
         assertEq(vault.balanceOf(address(mockEscrow)), _amount);
@@ -443,6 +462,7 @@ contract EscrowTest is Setup {
 
         // Should have sent the liquid balance and the rest in shares
         assertEq(vault.totalAssets(), toLock);
+        assertEq(mockEscrow.deposited(), 0);
         assertEq(asset.balanceOf(user), _amount - toLock);
         assertEq(vault.balanceOf(user), toLock);
         assertEq(asset.balanceOf(address(mockEscrow)), 0);
@@ -469,6 +489,7 @@ contract EscrowTest is Setup {
         mintAndBridge(mockEscrow, user, _amount);
 
         assertEq(vault.totalAssets(), _amount - _minimumBuffer);
+        assertEq(mockEscrow.deposited(), _amount);
         assertEq(asset.balanceOf(user), 0);
         assertEq(asset.balanceOf(address(mockEscrow)), _minimumBuffer);
         assertEq(
@@ -496,6 +517,7 @@ contract EscrowTest is Setup {
 
         // Should have sent the liquid balance and the rest in shares
         assertEq(vault.totalAssets(), toLock);
+        assertEq(mockEscrow.deposited(), 0);
         assertEq(asset.balanceOf(user), _amount - toLock);
         assertEq(vault.balanceOf(user), toLock);
         assertEq(asset.balanceOf(address(mockEscrow)), 0);

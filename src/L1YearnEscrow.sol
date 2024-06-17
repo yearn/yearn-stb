@@ -192,7 +192,7 @@ contract L1YearnEscrow is L1Escrow {
                 // Send an equivalent amount of shares for the difference.
                 uint256 shares;
                 unchecked {
-                    _vault.convertToShares(amount - maxWithdraw);
+                    shares = _vault.convertToShares(amount - maxWithdraw);
                 }
                 _vault.transfer(destinationAddress, shares);
 
