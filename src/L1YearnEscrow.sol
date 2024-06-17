@@ -265,11 +265,12 @@ contract L1YearnEscrow is L1Escrow {
             uint256 balance = originToken.balanceOf(address(this));
             uint256 _minimumBuffer = $.minimumBuffer;
             if (balance > _minimumBuffer) {
-                uint256 toDeposit;
                 unchecked {
-                    toDeposit = balance - _minimumBuffer;
+                    IVault(_vaultAddress).deposit(
+                        balance - _minimumBuffer,
+                        address(this)
+                    );
                 }
-                IVault(_vaultAddress).deposit(toDeposit, address(this));
             }
         }
 
