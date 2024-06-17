@@ -124,6 +124,10 @@ contract L1YearnEscrow is L1Escrow {
         originToken.safeTransferFrom(msg.sender, address(this), amount);
 
         VaultStorage storage $ = _getVaultStorage();
+        unchecked {
+            $.deposited += amount;
+        }
+
         uint256 _minimumBuffer = $.minimumBuffer;
         // Deposit to the vault if above buffer
         if (_minimumBuffer != 0) {
@@ -144,9 +148,6 @@ contract L1YearnEscrow is L1Escrow {
         }
 
         _vault.deposit(amount, address(this));
-        unchecked {
-            $.deposited += amount;
-        }
     }
 
     /**
@@ -160,6 +161,10 @@ contract L1YearnEscrow is L1Escrow {
         uint256 amount
     ) internal virtual override whenNotPaused {
         IERC20 originToken = originTokenAddress();
+        VaultStorage storage $ = _getVaultStorage();
+        unchecked {
+            $.deposited -= amount;
+        }
 
         // Check if there is enough buffer.
         uint256 underlyingBalance = originToken.balanceOf(address(this));
@@ -170,7 +175,6 @@ contract L1YearnEscrow is L1Escrow {
         }
 
         // Check if the vault will allow for a full withdraw.
-        VaultStorage storage $ = _getVaultStorage();
         IVault _vault = $.vaultAddress;
         uint256 maxWithdraw = _vault.maxWithdraw(address(this));
         // If liquidity will not allow for a full withdraw.
@@ -186,12 +190,10 @@ contract L1YearnEscrow is L1Escrow {
             // Check again to account for if there was loose underlying
             if (amount > maxWithdraw) {
                 // Send an equivalent amount of shares for the difference.
-                uint256 diff;
+                uint256 shares;
                 unchecked {
-                    diff = amount - maxWithdraw;
-                    $.deposited -= diff;
+                    _vault.convertToShares(amount - maxWithdraw);
                 }
-                uint256 shares = _vault.convertToShares(diff);
                 _vault.transfer(destinationAddress, shares);
 
                 if (maxWithdraw == 0) return;
@@ -201,9 +203,6 @@ contract L1YearnEscrow is L1Escrow {
 
         // Withdraw from vault to receiver.
         _vault.withdraw(amount, destinationAddress, address(this));
-        unchecked {
-            $.deposited -= amount;
-        }
     }
 
     // ****************************
