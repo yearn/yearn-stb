@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.20;
 
-import "forge-std/console.sol";
 import {BatchScript, console2} from "./lib/BatchScript.sol";
 
 import {L1Deployer, IPolygonRollupContract, IPolygonRollupManager} from "../src/L1Deployer.sol";
@@ -20,11 +19,11 @@ contract RegisterRollup is BatchScript {
         console2.log("Using Signer:", msg.sender);
   
         
-        console.log("---------------------------------------");
+        console2.log("---------------------------------------");
 
         if(l2Deployer == address(0)) {
 
-            console.log("Deploying an L2 Deployer...");
+            console2.log("Deploying an L2 Deployer...");
 
             address l2Admin = vm.envAddress("L2_ADMIN");
             require(l2Admin != address(0), "L2 Admin ZERO_ADDRESS");
@@ -36,7 +35,7 @@ contract RegisterRollup is BatchScript {
             // Start L2 RPC
             vm.createSelectFork(vm.envString("L2_RPC_URL"));
             vm.startBroadcast();
-            
+
             // Deploy L2 Deployer
             l2Deployer = address(new L2Deployer(
                 l2Admin,
@@ -48,7 +47,7 @@ contract RegisterRollup is BatchScript {
 
             vm.stopBroadcast();
 
-            console.log("L2 Deployer deployed to ", address(l2Deployer));
+            console2.log("L2 Deployer deployed to ", address(l2Deployer));
             bytes memory constructorArgs = abi.encode(
                 l2Admin,
                 address(L1_DEPLOYER),
@@ -56,9 +55,9 @@ contract RegisterRollup is BatchScript {
                 l2EscrowManager,
                 ZK_EVM_BRIDGE
             );
-            console.log("Constructor Arguments for verification were:");
+            console2.log("Constructor Arguments for verification were:");
             console2.logBytes(constructorArgs);
-            console.log("----");
+            console2.log("----");
         }
 
         // Take L2 deployer address
@@ -68,8 +67,8 @@ contract RegisterRollup is BatchScript {
         uint32 rollupID = uint32(vm.envUint("ROLLUP_ID"));
         address l1EscrowManager = vm.envAddress("L1_ESCROW_MANAGER");
 
-        console.log("Registering Rollup with ID ", rollupID, "to L1 Deployer");
-        console.log("Using ", l2Deployer, " as the L2 Deployer");
+        console2.log("Registering Rollup with ID ", rollupID, "to L1 Deployer");
+        console2.log("Using ", l2Deployer, " as the L2 Deployer");
 
         require(L1_DEPLOYER.getRollupContract(rollupID) == address(0), "Already registered");
 
@@ -77,7 +76,7 @@ contract RegisterRollup is BatchScript {
             .rollupIDToRollupData(rollupID)
             .rollupContract.admin();
 
-        console.log("Posting txn to the SAFE at ", safe);
+        console2.log("Posting txn to the SAFE at ", safe);
 
         bytes memory txn = abi.encodeCall(
             L1Deployer.registerRollup,
@@ -90,8 +89,8 @@ contract RegisterRollup is BatchScript {
 
         require(L1_DEPLOYER.getRollupContract(rollupID) != address(0), "txn failed");
 
-        console.log("TXN posted");
-        console.log("Visit https://app.safe.global/transactions/queue?safe=eth:", safe);
-        console.log("---------------------------------------");
+        console2.log("TXN posted");
+        console2.log("Visit https://app.safe.global/transactions/queue?safe=eth:", safe);
+        console2.log("---------------------------------------");
     }
 }
