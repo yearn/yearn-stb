@@ -37,6 +37,7 @@ contract L1YearnEscrow is L1Escrow {
     /// @custom:storage-location erc7201:yearn.storage.vault
     struct VaultStorage {
         IVault vaultAddress;
+        uint256 deposited;
         uint256 minimumBuffer;
     }
 
@@ -53,6 +54,11 @@ contract L1YearnEscrow is L1Escrow {
     function vaultAddress() public view returns (address) {
         VaultStorage storage $ = _getVaultStorage();
         return address($.vaultAddress);
+    }
+
+    function deposited() public view returns (uint256) {
+        VaultStorage storage $ = _getVaultStorage();
+        return $.deposited;
     }
 
     function minimumBuffer() public view returns (uint256) {
@@ -118,6 +124,10 @@ contract L1YearnEscrow is L1Escrow {
         originToken.safeTransferFrom(msg.sender, address(this), amount);
 
         VaultStorage storage $ = _getVaultStorage();
+        unchecked {
+            $.deposited += amount;
+        }
+
         uint256 _minimumBuffer = $.minimumBuffer;
         // Deposit to the vault if above buffer
         if (_minimumBuffer != 0) {
@@ -151,6 +161,10 @@ contract L1YearnEscrow is L1Escrow {
         uint256 amount
     ) internal virtual override whenNotPaused {
         IERC20 originToken = originTokenAddress();
+        VaultStorage storage $ = _getVaultStorage();
+        unchecked {
+            $.deposited -= amount;
+        }
 
         // Check if there is enough buffer.
         uint256 underlyingBalance = originToken.balanceOf(address(this));
@@ -161,7 +175,7 @@ contract L1YearnEscrow is L1Escrow {
         }
 
         // Check if the vault will allow for a full withdraw.
-        IVault _vault = _getVaultStorage().vaultAddress;
+        IVault _vault = $.vaultAddress;
         uint256 maxWithdraw = _vault.maxWithdraw(address(this));
         // If liquidity will not allow for a full withdraw.
         if (amount > maxWithdraw) {
@@ -181,6 +195,7 @@ contract L1YearnEscrow is L1Escrow {
                     shares = _vault.convertToShares(amount - maxWithdraw);
                 }
                 _vault.transfer(destinationAddress, shares);
+
                 if (maxWithdraw == 0) return;
                 amount = maxWithdraw;
             }
