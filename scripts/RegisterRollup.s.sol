@@ -90,7 +90,7 @@ contract RegisterRollup is BatchScript {
         require(L1_DEPLOYER.getRollupContract(rollupID) != address(0), "txn failed");
 
         console2.log("TXN posted");
-        console2.log("Visit https://app.safe.global/transactions/queue?safe=eth:", safe);
+        console2.log("Visit https://app.safe.global/transactions/queue?safe=eth:%s", safe);
         console2.log("---------------------------------------");
     }
 }
