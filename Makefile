@@ -19,7 +19,7 @@ trace-contract  :; forge test -vvv --match-contract $(contract) --fork-url ${FOR
 test-test  :; forge test -vv --match-test $(test) --fork-url ${FORK_URL}
 trace-test  :; forge test -vvv --match-test $(test) --fork-url ${FORK_URL}
 
-script	:; forge script script/${script} --rpc-url ${FORK_URL} --broadcast -vvv
+register	:; forge script scripts/RegisterRollup.s.sol:RegisterRollup --account ${account} --sender ${sender} --ffi --broadcast -vvv
 
 coverage  :; forge coverage -vv --fork-url ${FORK_URL}
 snapshot :; forge snapshot --fork-url ${FORK_URL}
