@@ -54,8 +54,8 @@
 # Deployments
 
 
-**L1 Deployer**: `0x`
-**STB Role Manager**: `0x`
+**L1 Deployer**: `0x1316a3312CfF738aDCBF011bCE9D1e7B9C88C817`
+**STB Role Manager**: `0x51b76329d2C6b8974053C9655484e231f7dcd418`
 
 
 In order to integrate your Polygon CDK chain with STB you will need to 
@@ -77,9 +77,11 @@ $ cd yearn-stb
 $ cp .env.example .env
 ```
 
-Fill in the ful .env with your specific rollup RPC, Polygon CDK based rollup ID, and the desired addresses. 
+Fill in the full .env with your specific rollup RPC, Polygon CDK based rollup ID, and the desired addresses. 
 
 **NOTE**: To deploy a L2 Deployer during the script leave the `L2_DEPLOYER` variable as address(0). If one is already deployed, insert the address in that variable to not re-deploy.
+
+To just deploy the L2 Deployer and not send the registerRollup Safe txn put 0 as the `ROLLUP_ID`.
 
 If you have not added a keystore private key to foundry before add your address to use
 

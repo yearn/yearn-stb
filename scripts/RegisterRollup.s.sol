@@ -10,7 +10,7 @@ contract RegisterRollup is BatchScript {
 
     address public ZK_EVM_BRIDGE = 0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe;
 
-    L1Deployer public L1_DEPLOYER = L1Deployer(0x49dC846d5EDA92dDC4985b7B7BBaD4F9b05B7597);
+    L1Deployer public L1_DEPLOYER = L1Deployer(0x1316a3312CfF738aDCBF011bCE9D1e7B9C88C817);
 
     function run() external {
         
