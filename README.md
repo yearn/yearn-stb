@@ -50,6 +50,61 @@
 
 - Allows for permissionless rebalance's based on the `minimumBuffer`.
 
+
+# Deployments
+
+
+**L1 Deployer**: `0x1316a3312CfF738aDCBF011bCE9D1e7B9C88C817`
+**STB Role Manager**: `0x51b76329d2C6b8974053C9655484e231f7dcd418`
+
+
+In order to integrate your Polygon CDK chain with STB you will need to 
+
+1. Deploy an `L2Deployer` on your rollup.
+2. Register the rollup and the L2 Deployer address with the L1 Deployer.
+
+Once done it is permsissionless for anyone to use the STB to bridge from mainnet to your rollup.
+
+There is a pre-built [script](https://github.com/yearn/yearn-stb/blob/master/scripts/RegisterRollup.s.sol) that can be run from this repo in order to complete the full setup.
+
+**NOTE**: The script assumes the rollups `admin` on the L1 is a Gnosis Safe and the private key input maps to either a singer or a delegate of that safe in order to post the txn that registers the rollup.
+
+```shell
+$ git clone --recursive https://github.com/yearn/yearn-stb
+
+$ cd yearn-stb
+
+$ cp .env.example .env
+```
+
+Fill in the full .env with your specific rollup RPC, Polygon CDK based rollup ID, and the desired addresses. 
+
+**NOTE**: To deploy a L2 Deployer during the script leave the `L2_DEPLOYER` variable as address(0). If one is already deployed, insert the address in that variable to not re-deploy.
+
+To just deploy the L2 Deployer and not send the registerRollup Safe txn put 0 as the `ROLLUP_ID`.
+
+If you have not added a keystore private key to foundry before add your address to use
+
+```shell
+$ cast wallet import --interactive <wallet_name>
+```
+
+Run the script
+```shell
+$ make register account=<wallet_name> sender=<wallet_address>
+```
+
+If successful the txn will both deploy the L2 Deployer on the specified rollup and post a Safe txn to register the Rollup in the L1 Deployer.
+
+
+### Verification
+
+The L2 Deployer will deploy 3 other implementation contracts with it when deployed.
+
+You can find the flatten version of all contracts deployed on the L2 in the repo https://github.com/yearn/yearn-stb/tree/master/flat
+
+The encoded constructor arguments used for the L2 deployer should be logged in the console on deployment as well.
+
 ## Foundry Documentation
 
 https://book.getfoundry.sh/
