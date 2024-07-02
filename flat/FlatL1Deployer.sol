@@ -8923,12 +8923,6 @@ contract L1Deployer is DeployerBase {
                            ROLLUP MANAGEMENT
     //////////////////////////////////////////////////////////////*/
 
-    function testRegisterRollup(
-        uint32 _rollupID,
-        address _l1EscrowManager,
-        address _l2Deployer
-    ) external {}
-
     /**
      * @notice Register a rollup with this deployer contract.
      * @dev Only a rollups Admin can set the `_l1EscrowManager`

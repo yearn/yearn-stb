@@ -48,6 +48,7 @@ contract RegisterRollup is BatchScript {
             vm.stopBroadcast();
 
             console2.log("L2 Deployer deployed to ", address(l2Deployer));
+            
             bytes memory constructorArgs = abi.encode(
                 l2Admin,
                 address(L1_DEPLOYER),
@@ -65,6 +66,10 @@ contract RegisterRollup is BatchScript {
         vm.createSelectFork(vm.envString("ETH_RPC_URL"));
 
         uint32 rollupID = uint32(vm.envUint("ROLLUP_ID"));
+
+        // Don't Register Rollup if the ID is set to 0.
+        if (rollupID == 0) return;
+
         address l1EscrowManager = vm.envAddress("L1_ESCROW_MANAGER");
 
         console2.log("Registering Rollup with ID ", rollupID, "to L1 Deployer");
