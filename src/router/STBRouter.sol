@@ -58,12 +58,7 @@ contract STBRouter is Multicall, PeripheryPayments {
         address _receiver
     ) public virtual {
         pullToken(ERC20(_asset), _amount, address(this));
-
-        L1YearnEscrow escrow = L1YearnEscrow(
-            l1Deployer.getEscrow(_rollupID, _asset)
-        );
-
-        escrow.bridgeToken(_receiver, _amount, true);
+        _bridge(_rollupID, _asset, _amount, _receiver);
     }
 
     function bridePermit2(
@@ -93,6 +88,25 @@ contract STBRouter is Multicall, PeripheryPayments {
             _signature
         );
 
+        _bridge(_rollupID, _asset, _amount, _receiver);
+    }
+
+    function bridgeEth(
+        uint32 _rollupID,
+        address _asset,
+        address _receiver
+    ) public payable virtual {
+        wrapWETH9();
+        uint256 _amount = WETH9.balanceOf(address(this));
+        _bridge(_rollupID, _asset, _amount, _receiver);
+    }
+
+    function _bridge(
+        uint32 _rollupID,
+        address _asset,
+        uint256 _amount,
+        address _receiver
+    ) internal virtual {
         L1YearnEscrow escrow = L1YearnEscrow(
             l1Deployer.getEscrow(_rollupID, _asset)
         );
