@@ -4,7 +4,7 @@ pragma solidity >=0.8.18;
 import {Setup, console, L1YearnEscrow, IPolygonZkEVMBridge, IVault, L1Deployer, ERC20} from "./utils/Setup.sol";
 import {IPolygonRollupManager, IPolygonRollupContract} from "../src/interfaces/Polygon/IPolygonRollupManager.sol";
 
-import {STBRouter} from "../src/router/STBRouter.sol";
+import {STBRouter, IPermit2} from "../src/router/STBRouter.sol";
 
 interface ISTBRouter {
     function bridge(uint32 _rollupID, address _asset) external;
@@ -295,6 +295,80 @@ contract RouterTest is Setup {
         assertEq(asset.balanceOf(address(vault)), _amount);
         assertEq(vault.balanceOf(address(mockEscrow)), _amount);
         assertEq(user.balance, 0);
+    }
+
+    bytes32 public constant _PERMIT_TRANSFER_FROM_TYPEHASH =
+        keccak256(
+            "PermitTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline)TokenPermissions(address token,uint256 amount)"
+        );
+
+    bytes32 public constant _TOKEN_PERMISSIONS_TYPEHASH =
+        keccak256("TokenPermissions(address token,uint256 amount)");
+
+    function test_bridge_withPermit(uint256 _amount) public {
+        _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
+
+        uint256 privateKey = 0xBEEF;
+        user = vm.addr(privateKey);
+
+        address counterPart = l1Deployer.getL2EscrowAddress(
+            l2RollupID,
+            address(asset)
+        );
+
+        airdrop(asset, user, _amount);
+
+        router.approve(asset, address(mockEscrow), 2 ** 256 - 1);
+
+        vm.prank(user);
+        asset.approve(address(permit2), 2 ** 256 - 1);
+
+        uint256 nonce = block.timestamp - 1;
+        uint256 deadline = block.timestamp;
+
+        bytes32 tokenPermissions = keccak256(
+            abi.encode(
+                _TOKEN_PERMISSIONS_TYPEHASH,
+                IPermit2.TokenPermissions({
+                    token: address(asset),
+                    amount: _amount
+                })
+            )
+        );
+
+        bytes32 msgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                IPermit2(permit2).DOMAIN_SEPARATOR(),
+                keccak256(
+                    abi.encode(
+                        _PERMIT_TRANSFER_FROM_TYPEHASH,
+                        tokenPermissions,
+                        address(router),
+                        nonce,
+                        deadline
+                    )
+                )
+            )
+        );
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        vm.prank(user);
+        router.bridgePermit2(
+            l2RollupID,
+            address(asset),
+            _amount,
+            user,
+            nonce,
+            deadline,
+            signature
+        );
+
+        assertEq(asset.balanceOf(user), 0);
+        assertEq(asset.balanceOf(address(vault)), _amount);
+        assertEq(vault.balanceOf(address(mockEscrow)), _amount);
     }
 
     event BridgeEvent(

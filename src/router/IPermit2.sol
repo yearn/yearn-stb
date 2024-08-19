@@ -30,4 +30,6 @@ interface IPermit2 {
         address owner,
         bytes calldata signature
     ) external;
+
+    function DOMAIN_SEPARATOR() external view returns (bytes32);
 }

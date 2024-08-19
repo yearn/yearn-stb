@@ -61,7 +61,7 @@ contract STBRouter is Multicall, PeripheryPayments {
         _bridge(_rollupID, _asset, _amount, _receiver);
     }
 
-    function bridePermit2(
+    function bridgePermit2(
         uint32 _rollupID,
         address _asset,
         uint256 _amount,
