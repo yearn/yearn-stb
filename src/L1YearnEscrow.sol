@@ -30,6 +30,11 @@ contract L1YearnEscrow is L1Escrow {
      */
     event UpdateMinimumBuffer(uint256 newMinimumBuffer);
 
+    /**
+     * @dev Emitted when the deposit limit is updated.
+     */
+    event UpdateDepositLimit(uint256 newDepositLimit);
+
     // ****************************
     // *      ERC-7201 Storage    *
     // **************************
@@ -38,7 +43,8 @@ contract L1YearnEscrow is L1Escrow {
     struct VaultStorage {
         IVault vaultAddress;
         uint256 deposited;
-        uint256 minimumBuffer;
+        uint128 minimumBuffer;
+        uint128 depositLimit;
     }
 
     // keccak256(abi.encode(uint256(keccak256("yearn.storage.vault")) - 1)) & ~bytes32(uint256(0xff))
@@ -107,6 +113,9 @@ contract L1YearnEscrow is L1Escrow {
         // Set the vault variable
         VaultStorage storage $ = _getVaultStorage();
         $.vaultAddress = IVault(_vaultAddress);
+
+        // Default to no deposit limit.
+        $.depositLimit = type(uint128).max;
     }
 
     // ****************************
@@ -281,15 +290,32 @@ contract L1YearnEscrow is L1Escrow {
 
     /**
      * @dev Update the minimum buffer to keep in the escrow.
+     *      uint128 max would be the max buffer. 
      * @param _minimumBuffer The new minimum buffer to enforce.
      */
     function updateMinimumBuffer(
         uint256 _minimumBuffer
     ) external virtual onlyRole(DEFAULT_ADMIN_ROLE) {
         VaultStorage storage $ = _getVaultStorage();
-        $.minimumBuffer = _minimumBuffer;
+        require(_minimumBuffer <= type(uint128).max, "max size");
+        $.minimumBuffer = uint128(_minimumBuffer);
 
         emit UpdateMinimumBuffer(_minimumBuffer);
+    }
+
+    /**
+     * @dev Update the deposit limit to use for the escrow.
+     *  uint128 is the max and means no deposit limit.
+     * @param _depositLimit The new deposit limit to enforce.
+     */
+    function updateDepositLimit(
+        uint256 _depositLimit
+    ) external virtual onlyRole(DEFAULT_ADMIN_ROLE) {
+        VaultStorage storage $ = _getVaultStorage();
+        require(_depositLimit <= type(uint128).max, "max size");
+        $.depositLimit = uint128(_depositLimit);
+
+        emit UpdateDepositLimit(_depositLimit);
     }
 
     /**
