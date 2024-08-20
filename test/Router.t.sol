@@ -235,7 +235,7 @@ contract RouterTest is Setup {
             uint32(depositCount)
         );
         vm.prank(user);
-        router.bridgeEth{value: _amount}(l2RollupID, address(asset), user);
+        router.bridgeEth{value: _amount}(l2RollupID, user);
 
         assertEq(asset.balanceOf(user), wethBalance);
         assertEq(asset.balanceOf(address(vault)), _amount);
@@ -271,7 +271,6 @@ contract RouterTest is Setup {
         multiCallData[2] = abi.encodeWithSelector(
             router.bridgeEth.selector,
             l2RollupID,
-            address(asset),
             user
         );
 
