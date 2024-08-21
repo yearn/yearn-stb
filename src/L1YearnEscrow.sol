@@ -72,6 +72,11 @@ contract L1YearnEscrow is L1Escrow {
         return $.minimumBuffer;
     }
 
+    function depositLimit() public view returns (uint256) {
+        VaultStorage storage $ = _getVaultStorage();
+        return $.depositLimit;
+    }
+
     // ****************************
     // *        Initializer       *
     // ****************************
@@ -129,10 +134,12 @@ contract L1YearnEscrow is L1Escrow {
     function _receiveTokens(
         uint256 amount
     ) internal virtual override whenNotPaused {
+        VaultStorage storage $ = _getVaultStorage();
+        require($.deposited + amount <= $.depositLimit, "deposit limit");
+
         IERC20 originToken = originTokenAddress();
         originToken.safeTransferFrom(msg.sender, address(this), amount);
 
-        VaultStorage storage $ = _getVaultStorage();
         unchecked {
             $.deposited += amount;
         }
@@ -290,7 +297,7 @@ contract L1YearnEscrow is L1Escrow {
 
     /**
      * @dev Update the minimum buffer to keep in the escrow.
-     *      uint128 max would be the max buffer. 
+     *      uint128 max would be the max buffer.
      * @param _minimumBuffer The new minimum buffer to enforce.
      */
     function updateMinimumBuffer(

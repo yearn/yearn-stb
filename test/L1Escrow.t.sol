@@ -154,7 +154,92 @@ contract EscrowTest is Setup {
         assertEq(vault.balanceOf(address(mockEscrow)), 0);
     }
 
-    function test_bridgeAsset_maxDepositLimit(uint256 _amount) public {
+    function test_bridgeAsset_escrowDepositLimit(uint256 _amount) public {
+        _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
+        address counterPart = l1Deployer.getL2EscrowAddress(
+            l2RollupID,
+            address(asset)
+        );
+        mockEscrow = deployMockL1Escrow();
+
+        vm.expectRevert();
+        mockEscrow.updateDepositLimit(0);
+
+        vm.prank(governator);
+        mockEscrow.updateDepositLimit(0);
+
+        // Simulate a bridge txn
+        airdrop(asset, user, _amount);
+
+        vm.prank(user);
+        asset.approve(address(mockEscrow), _amount);
+
+        vm.expectRevert("deposit limit");
+        vm.prank(user);
+        mockEscrow.bridgeToken(user, _amount, true);
+
+        vm.prank(governator);
+        mockEscrow.updateDepositLimit(_amount);
+
+        bytes memory data = abi.encode(user, _amount);
+        uint256 depositCount = polygonZkEVMBridge.depositCount();
+        vm.expectEmit(true, true, true, true, address(polygonZkEVMBridge));
+        emit BridgeEvent(
+            1,
+            l1RollupID,
+            address(mockEscrow),
+            l2RollupID,
+            counterPart,
+            0,
+            data,
+            uint32(depositCount)
+        );
+        vm.prank(user);
+        mockEscrow.bridgeToken(user, _amount, true);
+
+        assertEq(vault.totalAssets(), _amount);
+        assertEq(mockEscrow.deposited(), _amount);
+        assertEq(asset.balanceOf(user), 0);
+        assertEq(asset.balanceOf(address(mockEscrow)), 0);
+        assertEq(vault.balanceOf(address(mockEscrow)), _amount);
+
+        airdrop(asset, user, _amount);
+
+        vm.prank(user);
+        asset.approve(address(mockEscrow), _amount);
+
+        vm.expectRevert("deposit limit");
+        vm.prank(user);
+        mockEscrow.bridgeToken(user, _amount, true);
+
+        vm.prank(governator);
+        mockEscrow.updateDepositLimit(_amount * 2);
+
+        vm.prank(user);
+        mockEscrow.bridgeToken(user, _amount, true);
+
+        assertEq(vault.totalAssets(), _amount * 2);
+        assertEq(mockEscrow.deposited(), _amount * 2);
+        assertEq(asset.balanceOf(user), 0);
+        assertEq(asset.balanceOf(address(mockEscrow)), 0);
+        assertEq(vault.balanceOf(address(mockEscrow)), _amount * 2);
+
+        // Withdraw half
+        uint256 toWithdraw = _amount + 10;
+
+        data = abi.encode(user, toWithdraw);
+
+        vm.prank(address(polygonZkEVMBridge));
+        mockEscrow.onMessageReceived(counterPart, l2RollupID, data);
+
+        assertEq(vault.totalAssets(), _amount - 10);
+        assertEq(mockEscrow.deposited(), _amount * 2 - toWithdraw);
+        assertEq(asset.balanceOf(user), toWithdraw);
+        assertEq(asset.balanceOf(address(mockEscrow)), 0);
+        assertEq(vault.balanceOf(address(mockEscrow)), _amount - 10);
+    }
+
+    function test_bridgeAsset_vaultDepositLimit(uint256 _amount) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
         address counterPart = l1Deployer.getL2EscrowAddress(
             l2RollupID,
