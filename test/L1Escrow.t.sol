@@ -162,6 +162,7 @@ contract EscrowTest is Setup {
         );
         mockEscrow = deployMockL1Escrow();
 
+        // Only Admin can update deposit limit
         vm.expectRevert();
         mockEscrow.updateDepositLimit(0);
 
@@ -174,12 +175,13 @@ contract EscrowTest is Setup {
         vm.prank(user);
         asset.approve(address(mockEscrow), _amount);
 
+        // OVer Deposit limit
         vm.expectRevert("deposit limit");
         vm.prank(user);
         mockEscrow.bridgeToken(user, _amount, true);
 
         vm.prank(governator);
-        mockEscrow.updateDepositLimit(_amount);
+        mockEscrow.updateDepositLimit(uint128(_amount));
 
         bytes memory data = abi.encode(user, _amount);
         uint256 depositCount = polygonZkEVMBridge.depositCount();
@@ -213,7 +215,7 @@ contract EscrowTest is Setup {
         mockEscrow.bridgeToken(user, _amount, true);
 
         vm.prank(governator);
-        mockEscrow.updateDepositLimit(_amount * 2);
+        mockEscrow.updateDepositLimit(uint128(_amount * 2));
 
         vm.prank(user);
         mockEscrow.bridgeToken(user, _amount, true);
@@ -312,10 +314,10 @@ contract EscrowTest is Setup {
 
     function test_bridgeAsset_minimumBuffer(
         uint256 _amount,
-        uint256 _minimumBuffer
+        uint128 _minimumBuffer
     ) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
-        _minimumBuffer = bound(_minimumBuffer, 10, maxFuzzAmount);
+        _minimumBuffer = uint128(bound(_minimumBuffer, 10, maxFuzzAmount));
         address counterPart = l1Deployer.getL2EscrowAddress(
             l2RollupID,
             address(asset)
@@ -323,6 +325,7 @@ contract EscrowTest is Setup {
 
         mockEscrow = deployMockL1Escrow();
 
+        // Only Admin can update
         vm.expectRevert();
         mockEscrow.updateMinimumBuffer(_minimumBuffer);
 
@@ -355,9 +358,9 @@ contract EscrowTest is Setup {
         assertEq(vault.balanceOf(address(mockEscrow)), 0);
     }
 
-    function test_rebalance(uint256 _amount, uint256 _minimumBuffer) public {
+    function test_rebalance(uint256 _amount, uint128 _minimumBuffer) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
-        _minimumBuffer = bound(_minimumBuffer, 10, maxFuzzAmount);
+        _minimumBuffer = uint128(bound(_minimumBuffer, 10, maxFuzzAmount));
         address counterPart = l1Deployer.getL2EscrowAddress(
             l2RollupID,
             address(asset)
@@ -556,10 +559,10 @@ contract EscrowTest is Setup {
 
     function test_illiquidWithdraw_withBuffer(
         uint256 _amount,
-        uint256 _minimumBuffer
+        uint128 _minimumBuffer
     ) public {
         _amount = bound(_amount, minFuzzAmount, maxFuzzAmount);
-        _minimumBuffer = bound(_minimumBuffer, 10, _amount / 2);
+        _minimumBuffer = uint128(bound(_minimumBuffer, 10, _amount / 2));
         address counterPart = l1Deployer.getL2EscrowAddress(
             l2RollupID,
             address(asset)

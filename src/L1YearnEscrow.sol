@@ -301,11 +301,10 @@ contract L1YearnEscrow is L1Escrow {
      * @param _minimumBuffer The new minimum buffer to enforce.
      */
     function updateMinimumBuffer(
-        uint256 _minimumBuffer
+        uint128 _minimumBuffer
     ) external virtual onlyRole(DEFAULT_ADMIN_ROLE) {
         VaultStorage storage $ = _getVaultStorage();
-        require(_minimumBuffer <= type(uint128).max, "max size");
-        $.minimumBuffer = uint128(_minimumBuffer);
+        $.minimumBuffer = _minimumBuffer;
 
         emit UpdateMinimumBuffer(_minimumBuffer);
     }
@@ -316,11 +315,10 @@ contract L1YearnEscrow is L1Escrow {
      * @param _depositLimit The new deposit limit to enforce.
      */
     function updateDepositLimit(
-        uint256 _depositLimit
+        uint128 _depositLimit
     ) external virtual onlyRole(DEFAULT_ADMIN_ROLE) {
         VaultStorage storage $ = _getVaultStorage();
-        require(_depositLimit <= type(uint128).max, "max size");
-        $.depositLimit = uint128(_depositLimit);
+        $.depositLimit = _depositLimit;
 
         emit UpdateDepositLimit(_depositLimit);
     }
