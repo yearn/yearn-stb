@@ -18,9 +18,10 @@ jobs:
           fetch-depth: 1
 
       - name: Setup node.js
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: '22'
+          check-latest: true
 
       - name: Set yarn cache directory path
         id: yarn-cache-dir-path
