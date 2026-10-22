@@ -38,5 +38,9 @@ jobs:
 
       - name: Run Forge tests
         run: |
-          forge test -vvv --fork-url ${{ secrets.ETH_RPC_URL }}
+          # Pin the mainnet fork. The tests use live yearn v3 contracts, and the vault factory they deploy
+          # through (0x5577EdcB8A856582297CdBbB07055E6a6E38eb5f) was shut down at block 21,029,870
+          # (2024-10-23), so later blocks revert with `shutdown` and break the escrow tests.
+          # Block 21,000,000 (2024-10-19) is before that and all tests pass there.
+          forge test -vvv --fork-url ${{ secrets.ETH_RPC_URL }} --fork-block-number 21000000
         id: test
